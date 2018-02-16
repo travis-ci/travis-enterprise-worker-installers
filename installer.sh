@@ -103,9 +103,7 @@ docker_setup() {
   apt-get update
 
   if ! docker version &>/dev/null; then
-    apt-get install -y \
-      "linux-image-extra-$(uname -r)" \
-      docker-ce=$DOCKER_VERSION
+    apt-get install -y docker-ce=$DOCKER_VERSION
   fi
 
   # use LXC, and disable inter-container communication
