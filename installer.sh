@@ -156,6 +156,8 @@ install_travis_worker_service_file
 # Pulls down the travis-worker image
 install_travis_worker() {
   docker pull travisci/worker:$TRAVIS_WORKER_VERSION
+  echo "TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION" >> /etc/environment
+  source /etc/environment
 }
 
 install_travis_worker
