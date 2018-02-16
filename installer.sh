@@ -132,14 +132,16 @@ install_travis_worker_wrapper
 
 # Installs the systemd service file for travis-worker
 install_travis_worker_service_file() {
-  adduser \
-  --system \
-  --shell /bin/false \
-  --gecos 'Service user for running travis-worker' \
-  --group \
-  --disabled-password \
-  --no-create-home \
-  travis
+  if ! id -u 'travis' > /dev/null 2>&1; then
+    adduser \
+    --system \
+    --shell /bin/false \
+    --gecos 'Service user for running travis-worker' \
+    --group \
+    --disabled-password \
+    --no-create-home \
+    travis
+  fi
 
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
   systemctl daemon-reload
