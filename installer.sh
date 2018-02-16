@@ -115,3 +115,11 @@ install_travis_tfw_combined_env() {
 }
 
 install_travis_tfw_combined_env
+
+# Installs the wrapper script for running travis-worker
+install_travis_worker_wrapper() {
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
+  chmod +x /usr/local/bin/travis-worker-wrapper
+}
+
+install_travis_worker_wrapper
