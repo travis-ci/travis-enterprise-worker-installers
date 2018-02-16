@@ -63,6 +63,12 @@ else
   export DOCKER_VERSION
 fi
 
+if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
+  export TRAVIS_WORKER_VERSION="v3.5.0"
+else
+  export TRAVIS_WORKER_VERSION
+fi
+
 ## We only want to run as root
 root_check() {
   if [[ $(whoami) != "root" ]]; then
@@ -140,3 +146,10 @@ install_travis_worker_service_file() {
 }
 
 install_travis_worker_service_file
+
+# Pulls down the travis-worker image
+install_travis_worker() {
+  docker pull travisci/worker:$TRAVIS_WORKER_VERSION
+}
+
+install_travis_worker
