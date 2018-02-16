@@ -106,12 +106,9 @@ docker_setup() {
     apt-get install -y docker-ce=$DOCKER_VERSION
   fi
 
-  # use LXC, and disable inter-container communication
-  if [[ ! $(grep icc $DOCKER_CONFIG_FILE) ]]; then
-    echo 'DOCKER_OPTS="--icc=false '$DOCKER_MOUNT_POINT'"' >> $DOCKER_CONFIG_FILE
-    systemctl restart docker
-    sleep 2 # a short pause to ensure the docker daemon starts
-  fi
+  jq -n '{"storage-driver": "overlay2", "icc": false, "log-driver": "journald"}' > /etc/docker/daemon.json
+  systemctl restart docker
+  sleep 2 # a short pause to ensure the docker daemon starts
 }
 
 docker_setup
