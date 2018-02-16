@@ -190,7 +190,7 @@ pull_build_images() {
 }
 
 if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
-  docker_populate_images
+  pull_build_images
 fi
 
 configure_travis_worker() {
