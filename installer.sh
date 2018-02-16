@@ -225,3 +225,14 @@ configure_travis_worker() {
 }
 
 configure_travis_worker
+
+
+## Give travis-worker a kick to ensure the
+## latest config is picked up
+if [[ $(pgrep travis-worker) ]]; then
+  systemctl stop travis-worker
+fi
+systemctl start travis-worker
+
+echo 'Installation complete.'
+echo 'It is recommended that this host is restarted before running jobs through it'
