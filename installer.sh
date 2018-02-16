@@ -145,6 +145,9 @@ install_travis_worker_service_file() {
     --disabled-password \
     --no-create-home \
     travis
+
+    #travis needs to be in the docker group to execute docker
+    usermod -aG docker travis
   fi
 
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
