@@ -80,16 +80,20 @@ root_check() {
 root_check
 ##
 
-## Install and setup Docker
-docker_setup() {
-
-  : "${DOCKER_APT_FILE:=/etc/apt/sources.list.d/docker.list}"
-  : "${DOCKER_CONFIG_FILE:=/etc/default/docker}"
-
-  apt-get install -y apt-transport-https \
+install_packages() {
+  apt-get install -y
+    apt-get install -y apt-transport-https \
     ca-certificates \
     curl \
-    software-properties-common
+    software-properties-common \
+    jq
+}
+
+install_packages
+
+## Install and setup Docker
+docker_setup() {
+  : "${DOCKER_CONFIG_FILE:=/etc/default/docker}"
 
   if [[ ! -f $DOCKER_APT_FILE ]]; then
     curl -fsSL 'https://download.docker.com/linux/ubuntu/gpg' | apt-key add -
