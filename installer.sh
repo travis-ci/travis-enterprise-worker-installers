@@ -21,9 +21,6 @@ while [ $# -gt 0 ]; do
     --docker_version=*)
       DOCKER_VERSION="${1#*=}"
       ;;
-    --aws=*)
-      AWS="${1#*=}"
-      ;;
     --travis_enterprise_host=*)
       TRAVIS_ENTERPRISE_HOST="${1#*=}"
       ;;
@@ -45,7 +42,6 @@ while [ $# -gt 0 ]; do
       printf "* Valid Arguments are:                                      *\n"
       printf "*  --travis_worker_version=x.x.x                            *\n"
       printf "*  --docker_version=x.x.x                                   *\n"
-      printf "*  --aws=true                                               *\n"
       printf "*  --travis_enterprise_host="demo.enterprise.travis-ci.com" *\n"
       printf "*  --travis_enterprise_security_token="token123"            *\n"
       printf "*  --travis_enterprise_build_endpoint="build-api"           *\n"
