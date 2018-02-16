@@ -107,3 +107,11 @@ docker_setup() {
 }
 
 docker_setup
+
+# Installs the travis-tfw-combined-env commandline tool
+install_travis_tfw_combined_env() {
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/tfw/usr/local/bin/travis-tfw-combined-env' > /usr/local/bin/travis-tfw-combined-env
+  chmod +x /usr/local/bin/travis-tfw-combined-env
+}
+
+install_travis_tfw_combined_env
