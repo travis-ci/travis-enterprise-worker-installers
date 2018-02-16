@@ -149,6 +149,9 @@ install_travis_worker_service_file() {
   fi
 
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
+  mkdir -p /etc/systemd/system/travis-worker.service.d
+  echo "[Service]" > /etc/systemd/system/travis-worker.service.d/env.conf
+  echo "Environment=\"TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION\"" >> /etc/systemd/system/travis-worker.service.d/env.conf
   systemctl daemon-reload
 }
 
@@ -157,8 +160,6 @@ install_travis_worker_service_file
 # Pulls down the travis-worker image
 install_travis_worker() {
   docker pull travisci/worker:$TRAVIS_WORKER_VERSION
-  echo "TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION" >> /etc/environment
-  source /etc/environment
 }
 
 install_travis_worker
