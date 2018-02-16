@@ -190,3 +190,39 @@ pull_build_images() {
 if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
   docker_populate_images
 fi
+
+configure_travis_worker() {
+  TRAVIS_ENTERPRISE_CONFIG="/etc/default/travis-enterprise"
+  TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
+
+  # Trusty images don't seem to like SSH
+  echo "export TRAVIS_WORKER_DOCKER_NATIVE=\"true\"" >> $TRAVIS_WORKER_CONFIG
+  echo "export AMQP_URI=\"amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis\"" >> $TRAVIS_WORKER_CONFIG
+  echo "export BUILD_API_URI=\"https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-}/script\"" >> $TRAVIS_WORKER_CONFIG
+  echo "export TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'" >> $TRAVIS_WORKER_CONFIG
+  echo "export POOL_SIZE='2'" >> $TRAVIS_WORKER_CONFIG
+  echo "export PROVIDER_NAME='docker'" >> $TRAVIS_WORKER_CONFIG
+  echo "export TRAVIS_WORKER_DOCKER_ENDPOINT='tcp://localhost:4243'" >> $TRAVIS_WORKER_CONFIG
+
+  if [[ -n $TRAVIS_ENTERPRISE_HOST ]]; then
+    echo "export TRAVIS_ENTERPRISE_HOST=\"$TRAVIS_ENTERPRISE_HOST\"" >> $TRAVIS_ENTERPRISE_CONFIG
+  fi
+
+  if [[ -n $TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
+    echo "export TRAVIS_ENTERPRISE_SECURITY_TOKEN=\"$TRAVIS_ENTERPRISE_SECURITY_TOKEN\"" >> $TRAVIS_ENTERPRISE_CONFIG
+  fi
+
+  if [[ -n $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
+    echo "export TRAVIS_ENTERPRISE_BUILD_ENDPOINT=\"$TRAVIS_ENTERPRISE_BUILD_ENDPOINT\"" >> $TRAVIS_ENTERPRISE_CONFIG
+  else
+    echo "export TRAVIS_ENTERPRISE_BUILD_ENDPOINT=\"__build__\"" >> $TRAVIS_ENTERPRISE_CONFIG
+  fi
+
+  if [[ -n $TRAVIS_QUEUE_NAME ]]; then
+    echo "export QUEUE_NAME='$TRAVIS_QUEUE_NAME'" >> $TRAVIS_WORKER_CONFIG
+  else
+    echo "export QUEUE_NAME='builds.trusty'" >> $TRAVIS_WORKER_CONFIG
+  fi
+}
+
+configure_travis_worker
