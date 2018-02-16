@@ -161,3 +161,32 @@ install_travis_worker() {
 }
 
 install_travis_worker
+
+pull_build_images() {
+  image_mappings_json=$(curl https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json)
+
+  docker_images=$(echo "$image_mappings_json" | jq -r "[.[]] | unique | .[]")
+
+  for docker_image in $docker_images; do
+    docker pull "$docker_image"
+
+    langs=$(echo "$image_mappings_json" | jq -r "to_entries | map(select(.value | contains(\"$docker_image\"))) | .[] .key")
+
+    for lang in $langs; do
+      docker tag $docker_image travis:$lang
+    done
+  done
+
+  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
+
+  for lang_map in "${lang_mappings[@]}"; do
+    map=$(echo $lang_map|cut -d':' -f 1)
+    lang=$(echo $lang_map|cut -d':' -f 2)
+
+    docker tag travis:$lang travis:$map
+  done
+}
+
+if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
+  docker_populate_images
+fi
