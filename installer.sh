@@ -110,7 +110,7 @@ docker_setup() {
 
   # use LXC, and disable inter-container communication
   if [[ ! $(grep icc $DOCKER_CONFIG_FILE) ]]; then
-    echo 'DOCKER_OPTS="-H tcp://127.0.0.1:4243 -H unix:///var/run/docker.sock --icc=false '$DOCKER_MOUNT_POINT'"' >> $DOCKER_CONFIG_FILE
+    echo 'DOCKER_OPTS="--icc=false '$DOCKER_MOUNT_POINT'"' >> $DOCKER_CONFIG_FILE
     systemctl restart docker
     sleep 2 # a short pause to ensure the docker daemon starts
   fi
