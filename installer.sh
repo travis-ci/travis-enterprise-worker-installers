@@ -198,18 +198,18 @@ pull_precise_build_images() {
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node_js:node-js')
   tag=latest
   for lang in $langs; do
-    docker pull quay.io/travisci/travis-$lang:$tag
-    docker tag quay.io/travisci/travis-$lang:$tag travis:$lang
+    docker pull quay.io/travisci/travis-"$lang":"$tag"
+    docker tag quay.io/travisci/travis-"$lang":"$tag" travis:"$lang"
   done
 
   # tag travis:ruby as travis:default
   docker tag travis:ruby travis:default
 
   for lang_map in "${lang_mappings[@]}"; do
-    map=$(echo $lang_map|cut -d':' -f 1)
-    lang=$(echo $lang_map|cut -d':' -f 2)
+    map=$(echo "$lang_map"|cut -d':' -f 1)
+    lang=$(echo "$lang_map"|cut -d':' -f 2)
 
-    docker tag quay.io/travisci/travis-$lang:$tag travis:$map
+    docker tag quay.io/travisci/travis-"$lang":"$tag" travis:"$map"
   done
 }
 
