@@ -40,18 +40,18 @@ while [ $# -gt 0 ]; do
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
     *)
-      printf "*************************************************************\n"
-      printf "* Error: Invalid argument.                                  *\n"
-      printf "* Valid Arguments are:                                      *\n"
-      printf "*  --travis_worker_version=x.x.x                            *\n"
-      printf "*  --docker_version=x.x.x                                   *\n"
-      printf "*  --docker_storage_driver=\"<driver>\"                     *\n"
-      printf "*  --travis_enterprise_host="demo.enterprise.travis-ci.com" *\n"
-      printf "*  --travis_enterprise_security_token="token123"            *\n"
-      printf "*  --travis_enterprise_build_endpoint="build-api"           *\n"
-      printf "*  --travis_queue_name="builds.linux"                       *\n"
-      printf "*  --skip_docker_populate=true                              *\n"
-      printf "*************************************************************\n"
+      printf "**************************************************************\\n"
+      printf "* Error: Invalid argument.                                   *\\n"
+      printf "* Valid Arguments are:                                       *\\n"
+      printf "*  --travis_worker_version=x.x.x                             *\\n"
+      printf "*  --docker_version=x.x.x                                    *\\n"
+      printf "*  --docker_storage_driver=\"<driver>\"                        *\\n"
+      printf "*  --travis_enterprise_host=\"demo.enterprise.travis-ci.com\"  *\\n"
+      printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
+      printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
+      printf "*  --travis_queue_name=\"builds.linux\"                        *\\n"
+      printf "*  --skip_docker_populate=true                               *\\n"
+      printf "**************************************************************\\n"
       exit 1
   esac
   shift
@@ -178,17 +178,17 @@ pull_build_images() {
     langs=$(echo "$image_mappings_json" | jq -r "to_entries | map(select(.value | contains(\"$docker_image\"))) | .[] .key")
 
     for lang in $langs; do
-      docker tag $docker_image travis:$lang
+      docker tag "$docker_image" travis:"$lang"
     done
   done
 
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
 
   for lang_map in "${lang_mappings[@]}"; do
-    map=$(echo $lang_map|cut -d':' -f 1)
-    lang=$(echo $lang_map|cut -d':' -f 2)
+    map=$(echo "$lang_map"|cut -d':' -f 1)
+    lang=$(echo "$lang_map"|cut -d':' -f 2)
 
-    docker tag travis:$lang travis:$map
+    docker tag travis:"$lang" travis:"$map"
   done
 }
 
@@ -201,6 +201,7 @@ configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
   # Trusty images don't seem to like SSH
+  # shellcheck disable=SC2129
   echo "export TRAVIS_WORKER_DOCKER_NATIVE=\"true\"" >> $TRAVIS_WORKER_CONFIG
   echo "export AMQP_URI=\"amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis\"" >> $TRAVIS_WORKER_CONFIG
   echo "export BUILD_API_URI=\"https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-}/script\"" >> $TRAVIS_WORKER_CONFIG
