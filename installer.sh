@@ -21,6 +21,9 @@ while [ $# -gt 0 ]; do
     --docker_version=*)
       DOCKER_VERSION="${1#*=}"
       ;;
+    --docker_storage_driver=*)
+      DOCKER_STORAGE_DRIVER="${1#*=}"
+      ;;
     --travis_enterprise_host=*)
       TRAVIS_ENTERPRISE_HOST="${1#*=}"
       ;;
@@ -42,6 +45,7 @@ while [ $# -gt 0 ]; do
       printf "* Valid Arguments are:                                      *\n"
       printf "*  --travis_worker_version=x.x.x                            *\n"
       printf "*  --docker_version=x.x.x                                   *\n"
+      printf "*  --docker_storage_driver=\"<driver>\"                     *\n"
       printf "*  --travis_enterprise_host="demo.enterprise.travis-ci.com" *\n"
       printf "*  --travis_enterprise_security_token="token123"            *\n"
       printf "*  --travis_enterprise_build_endpoint="build-api"           *\n"
@@ -57,6 +61,12 @@ if [[ ! -n $DOCKER_VERSION ]]; then
   export DOCKER_VERSION="17.12.0~ce-0~ubuntu"
 else
   export DOCKER_VERSION
+fi
+
+if [[ ! -n $DOCKER_STORAGE_DRIVER ]]; then
+  export DOCKER_STORAGE_DRIVER="overlay2"
+else
+  export DOCKER_STORAGE_DRIVER
 fi
 
 if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
@@ -102,7 +112,7 @@ docker_setup() {
     apt-get install -y docker-ce=$DOCKER_VERSION
   fi
 
-  jq -n '{"storage-driver": "overlay2", "icc": false, "log-driver": "journald"}' > /etc/docker/daemon.json
+  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
   systemctl restart docker
   sleep 2 # a short pause to ensure the docker daemon starts
 }
