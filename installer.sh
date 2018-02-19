@@ -36,10 +36,14 @@ while [ $# -gt 0 ]; do
     --travis_queue_name=*)
       TRAVIS_QUEUE_NAME="${1#*=}"
       ;;
+    --travis_legacy_build_images=*)
+      TRAVIS_LEGACY_BUILD_IMAGES="${1#*=}"
+      ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
     *)
+
       printf "**************************************************************\\n"
       printf "* Error: Invalid argument.                                   *\\n"
       printf "* Valid Arguments are:                                       *\\n"
@@ -50,8 +54,10 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
       printf "*  --travis_queue_name=\"builds.linux\"                        *\\n"
+      printf "*  --travis_legacy_build_images=true                         *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "**************************************************************\\n"
+
       exit 1
   esac
   shift
@@ -73,6 +79,12 @@ if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
   export TRAVIS_WORKER_VERSION="v3.5.0"
 else
   export TRAVIS_WORKER_VERSION
+fi
+
+if [[ ! -n $TRAVIS_LEGACY_BUILD_IMAGES ]]; then
+  export BUILD_IMAGES='trusty'
+else
+  export BUILD_IMAGES='precise'
 fi
 
 ## We only want to run as root
@@ -179,7 +191,30 @@ install_travis_worker() {
 
 install_travis_worker
 
-pull_build_images() {
+pull_precise_build_images() {
+  echo "Installing Ubuntu Precise build images"
+  # pick the languages you are interested in
+  langs='android erlang go haskell jvm node-js perl php python ruby'
+  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node_js:node-js')
+  tag=latest
+  for lang in $langs; do
+    docker pull quay.io/travisci/travis-$lang:$tag
+    docker tag quay.io/travisci/travis-$lang:$tag travis:$lang
+  done
+
+  # tag travis:ruby as travis:default
+  docker tag travis:ruby travis:default
+
+  for lang_map in "${lang_mappings[@]}"; do
+    map=$(echo $lang_map|cut -d':' -f 1)
+    lang=$(echo $lang_map|cut -d':' -f 2)
+
+    docker tag quay.io/travisci/travis-$lang:$tag travis:$map
+  done
+}
+
+pull_trusty_build_images() {
+  echo "Installing Ubuntu Trusty build images"
   image_mappings_json=$(curl https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json)
 
   docker_images=$(echo "$image_mappings_json" | jq -r "[.[]] | unique | .[]")
@@ -205,7 +240,13 @@ pull_build_images() {
 }
 
 if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
-  pull_build_images
+  if [[ $BUILD_IMAGES == 'precise' ]]; then
+    pull_precise_build_images
+  else
+    pull_trusty_build_images
+  fi
+else
+  echo "Skip populating build images"
 fi
 
 configure_travis_worker() {
