@@ -90,8 +90,7 @@ require_minimum_disk_space() {
   local root_disk_space=""
   root_disk_space="$(df -k / | tail -1 | awk '{print $2}')"
   # 40593708 == 40GB
-  if [ $((root_disk_space)) -lt 40593708 ]
-  then
+  if [[ $((root_disk_space)) -lt 40593708 ]]; then
     echo "You need at least 40GB of total disk space for the root file system"
     exit 1
   fi
