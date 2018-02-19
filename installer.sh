@@ -86,6 +86,18 @@ root_check() {
 root_check
 ##
 
+require_minimum_disk_space() {
+  local root_disk_space="$(df -k / | tail -1 | awk '{print $4}')"
+  # 39708844 == 40GB
+  if [ $((root_disk_space)) -lt 39708844 ]
+  then
+    echo "You need at least 40GB of total disk space for the root file system"
+    exit 1
+  fi
+}
+
+require_minimum_disk_space
+
 install_packages() {
   apt-get install -y
     apt-get install -y apt-transport-https \
