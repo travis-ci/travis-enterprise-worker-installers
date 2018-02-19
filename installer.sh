@@ -88,8 +88,10 @@ root_check
 
 require_minimum_disk_space() {
   local root_disk_space="$(df -k / | tail -1 | awk '{print $4}')"
-  # 39708844 == 40GB
-  if [ $((root_disk_space)) -lt 39708844 ]
+  # 39545852 ~= 39GB
+  # This odd number is caused by EC2. When a user requests a 40GB harddisk, they
+  # get 39GB in the end, which is already fine for us
+  if [ $((root_disk_space)) -lt 39545852 ]
   then
     echo "You need at least 40GB of total disk space for the root file system"
     exit 1
