@@ -85,6 +85,18 @@ if [[ ! -n $TRAVIS_LEGACY_BUILD_IMAGES ]]; then
   export BUILD_IMAGES='trusty'
 else
   export BUILD_IMAGES='precise'
+
+  # Precise workers listen to the builds.linux by default
+  # We only set that though if the user didn't specify a different queue name
+  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+    export TRAVIS_QUEUE_NAME='builds.linux'
+  fi
+fi
+
+if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+  export TRAVIS_QUEUE_NAME='builds.trusty'
+else
+  export TRAVIS_QUEUE_NAME
 fi
 
 if [[ ! -n $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
