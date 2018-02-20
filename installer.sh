@@ -269,7 +269,7 @@ configure_travis_worker() {
   echo "export TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'" >> $TRAVIS_WORKER_CONFIG
   echo "export POOL_SIZE='2'" >> $TRAVIS_WORKER_CONFIG
   echo "export PROVIDER_NAME='docker'" >> $TRAVIS_WORKER_CONFIG
-  echo "export TRAVIS_WORKER_DOCKER_ENDPOINT='tcp://localhost:4243'" >> $TRAVIS_WORKER_CONFIG
+  echo "export TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'" >> $TRAVIS_WORKER_CONFIG
 
   if [[ -n $TRAVIS_QUEUE_NAME ]]; then
     echo "export QUEUE_NAME='$TRAVIS_QUEUE_NAME'" >> $TRAVIS_WORKER_CONFIG
