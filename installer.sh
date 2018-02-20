@@ -286,4 +286,4 @@ fi
 systemctl start travis-worker
 
 echo 'Installation complete.'
-echo 'It is recommended that this host is restarted before running jobs through it'
+echo 'It is recommended to restart this host before it is used to run any jobs'
