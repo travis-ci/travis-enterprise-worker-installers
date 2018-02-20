@@ -4,3 +4,5 @@ addons:
     packages:
     - shellcheck
 script: shellcheck -s bash *.sh
+notifications:
+  email: false
