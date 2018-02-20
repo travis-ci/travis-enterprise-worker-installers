@@ -117,6 +117,9 @@ require_minimum_disk_space() {
 require_minimum_disk_space
 
 install_packages() {
+  # This is necessary because usually package sources are not up to date yet when this script runs.
+  apt-get update
+
   apt-get install -y
     apt-get install -y apt-transport-https \
     ca-certificates \
