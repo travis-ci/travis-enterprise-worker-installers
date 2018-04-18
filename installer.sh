@@ -166,7 +166,7 @@ docker_setup
 
 # Installs the travis-tfw-combined-env commandline tool
 install_travis_tfw_combined_env() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/tfw/usr/local/bin/travis-tfw-combined-env' > /usr/local/bin/travis-combined-env
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/4f1d7c45de878140b17535cb7443f1e9bf88ddf2/assets/tfw/usr/local/bin/travis-tfw-combined-env' > /usr/local/bin/travis-combined-env
   chmod +x /usr/local/bin/travis-combined-env
 }
 
@@ -174,7 +174,7 @@ install_travis_tfw_combined_env
 
 # Installs the wrapper script for running travis-worker
 install_travis_worker_wrapper() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/d75b070cbd9fa882a482463e498492a5a2c96a6f/assets/travis-worker/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
   chmod +x /usr/local/bin/travis-worker-wrapper
 }
 
