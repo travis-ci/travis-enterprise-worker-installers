@@ -26,6 +26,12 @@ download_apt_packages() {
 
 download_apt_packages
 
+zip_apt_packages() {
+  tar -zcvf system-packages.tar.gz -C archives .
+}
+
+zip_apt_packages
+
 prepare_images_folder() {
   mkdir -p docker_images
 }
