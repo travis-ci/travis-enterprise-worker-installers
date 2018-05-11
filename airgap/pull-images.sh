@@ -7,6 +7,14 @@ export DEBIAN_FRONTEND=noninteractive
 
 export TRAVIS_WORKER_VERSION="v3.5.0"
 
+prepare_work_directory() {
+  mkdir workdir
+}
+
+prepare_work_directory
+
+cd workdir
+
 download_docker() {
   wget "https://apt.dockerproject.org/repo/pool/main/d/docker-engine/docker-engine_17.05.0~ce-0~ubuntu-xenial_amd64.deb"
 }
@@ -24,13 +32,13 @@ download_apt_packages() {
 		jq
 }
 
-download_apt_packages
+# download_apt_packages
 
 zip_apt_packages() {
   tar -zcvf system-packages.tar.gz -C archives .
 }
 
-zip_apt_packages
+# zip_apt_packages
 
 prepare_images_folder() {
   mkdir -p docker_images
