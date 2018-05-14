@@ -8,7 +8,7 @@ export DEBIAN_FRONTEND=noninteractive
 export TRAVIS_WORKER_VERSION="v3.5.0"
 
 prepare_work_directory() {
-  mkdir workdir
+  mkdir -p workdir
 }
 
 prepare_work_directory
