@@ -53,5 +53,9 @@ download_auxiliary_tools() {
 }
 
 download_auxiliary_tools
-
+mv aux_tools.tar.gz ../aux_tools.tar.gz
+mv docker_images ../docker_images
+cd ..
+rm -rf workdir
 echo "Pulling images and dependencies finished"
+echo "Plase copy aux_tools.tar.gz and docker_images/ over to the worker machine"
