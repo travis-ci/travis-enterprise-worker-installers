@@ -43,3 +43,15 @@ pull_trusty_build_images() {
 }
 
 pull_trusty_build_images
+
+download_auxiliary_tools() {
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/4f1d7c45de878140b17535cb7443f1e9bf88ddf2/assets/tfw/usr/local/bin/travis-tfw-combined-env' > travis-combined-env
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/d75b070cbd9fa882a482463e498492a5a2c96a6f/assets/travis-worker/travis-worker-wrapper' > travis-worker-wrapper
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > travis-worker.service
+
+  tar -cvzf aux_tools.tar.gz travis-combined-env travis-worker-wrapper travis-worker.service
+}
+
+download_auxiliary_tools
+
+echo "Pulling images and dependencies finished"
