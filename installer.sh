@@ -271,7 +271,7 @@ install_docker_images_from_airgap() {
 pull_trusty_build_images() {
   echo "Installing Ubuntu Trusty build images"
 
-  image_mappings_json=$(cat /tmp/generated-language-mapping.json)
+  image_mappings_json=$(cat /tmp/aux_tools/generated-language-mapping.json)
 
   docker_images=$(echo "$image_mappings_json" | jq -r "[.[]] | unique | .[]")
 
