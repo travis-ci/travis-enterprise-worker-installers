@@ -341,10 +341,10 @@ if [[ ! -n AIRGAP_DIRECTORY ]]; then
   configure_travis_worker
 else
   setup_docker
+  extract_aux_tools_archive
   install_travis_tfw_combined_env_from_airgap
   install_travis_worker_wrapper_from_airgap
   install_travis_user
-  extract_aux_tools_archive
   install_travis_worker_file_from_airgap 
   configure_travis_worker_service 
   install_language_mapping_from_airgap
