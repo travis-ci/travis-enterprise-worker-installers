@@ -220,6 +220,8 @@ install_travis_worker_file_from_airgap() {
 }
 
 configure_travis_worker_service() {
+  mkdir -p /var/tmp/travis-run.d/
+  chown -R travis:travis /var/tmp/travis-run.d/
   mkdir -p /etc/systemd/system/travis-worker.service.d
   echo "[Service]" > /etc/systemd/system/travis-worker.service.d/env.conf
   echo "Environment=\"TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION\"" >> /etc/systemd/system/travis-worker.service.d/env.conf
