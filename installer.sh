@@ -270,6 +270,13 @@ else
   echo "Skip populating build images"
 fi
 
+create_run_dir() {
+  mkdir -p /var/tmp/travis-run.d/
+  chown -R travis:travis /var/tmp/travis-run.d/
+}
+
+create_run_dir
+
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
