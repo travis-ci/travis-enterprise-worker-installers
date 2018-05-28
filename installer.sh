@@ -166,6 +166,10 @@ setup_docker() {
   sleep 2 # a short pause to ensure the docker daemon starts
 }
 
+create_aux_tools_dir() {
+  mkdir -p /tmp/aux_tools
+}
+
 extract_aux_tools_archive() {
   mkdir -p /tmp/aux_tools
   tar -xf "$AIRGAP_DIRECTORY/aux_tools.tar.gz" -C /tmp/aux_tools
@@ -321,6 +325,7 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   install_packages
   install_docker
   setup_docker
+  create_aux_tools_dir
   download_travis_tfw_combined_env
   download_travis_worker_wrapper
   install_travis_user
@@ -343,6 +348,7 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   configure_travis_worker
 else
   setup_docker
+  create_aux_tools_dir
   extract_aux_tools_archive
   install_travis_tfw_combined_env_from_airgap
   install_travis_worker_wrapper_from_airgap
