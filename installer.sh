@@ -260,7 +260,7 @@ pull_precise_build_images() {
 }
 
 download_language_mapping() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json' > /tmp/generated-language-mapping.json
+  curl -fsSL 'https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json' > /tmp/aux_tools/generated-language-mapping.json
 }
 
 install_language_mapping_from_airgap() {
