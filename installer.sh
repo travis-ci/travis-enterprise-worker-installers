@@ -168,7 +168,7 @@ setup_docker() {
 
 extract_aux_tools_archive() {
   mkdir -p /tmp/aux_tools
-  tar -xf $AIRGAP_DIRECTORY/aux_tools.tar.gz -C /tmp/aux_tools
+  tar -xf "$AIRGAP_DIRECTORY/aux_tools.tar.gz" -C /tmp/aux_tools
   echo "Extracted files"
 }
 
@@ -260,13 +260,13 @@ download_language_mapping() {
 }
 
 install_language_mapping_from_airgap() {
-  tar -xzf $AIRGAP_DIRECTORY/aux_tools.tar.gz generated-language-mapping.json > /tmp/generated-language-mapping.json
+  tar -xzf "$AIRGAP_DIRECTORY/aux_tools.tar.gz" generated-language-mapping.json > /tmp/generated-language-mapping.json
   cat /tmp/generated-language-mapping.json
 }
 
 install_docker_images_from_airgap() {
   for filename in $AIRGAP_DIRECTORY/docker_images/*.tar; do
-    docker load -i $filename
+    docker load -i "$filename"
   done
 }
 
@@ -317,7 +317,7 @@ configure_travis_worker() {
   fi
 }
 
-if [[ ! -n AIRGAP_DIRECTORY ]]; then
+if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   install_packages
   install_docker
   setup_docker
@@ -325,10 +325,10 @@ if [[ ! -n AIRGAP_DIRECTORY ]]; then
   download_travis_worker_wrapper
   install_travis_user
   download_travis_worker_service_file
-  configure_travis_worker_service 
+  configure_travis_worker_service
   install_travis_worker
 
-  
+
   if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
     if [[ $BUILD_IMAGES == 'precise' ]]; then
       pull_precise_build_images
@@ -347,8 +347,8 @@ else
   install_travis_tfw_combined_env_from_airgap
   install_travis_worker_wrapper_from_airgap
   install_travis_user
-  install_travis_worker_file_from_airgap 
-  configure_travis_worker_service 
+  install_travis_worker_file_from_airgap
+  configure_travis_worker_service
   install_language_mapping_from_airgap
   install_docker_images_from_airgap
   pull_trusty_build_images
