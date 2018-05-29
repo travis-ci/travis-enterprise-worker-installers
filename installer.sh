@@ -42,6 +42,9 @@ while [ $# -gt 0 ]; do
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
+    --airgap_directory=*)
+      AIRGAP_DIRECTORY="${1#*=}"
+      ;;
     *)
 
       printf "**************************************************************\\n"
@@ -56,6 +59,7 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_queue_name=\"builds.linux\"                        *\\n"
       printf "*  --travis_legacy_build_images=true                         *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
+      printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
 
       exit 1
@@ -140,10 +144,8 @@ install_packages() {
     jq
 }
 
-install_packages
-
 ## Install and setup Docker
-docker_setup() {
+install_docker() {
   : "${DOCKER_CONFIG_FILE:=/etc/default/docker}"
 
   if [[ ! -f $DOCKER_APT_FILE ]]; then
@@ -156,32 +158,48 @@ docker_setup() {
   if ! docker version &>/dev/null; then
     apt-get install -y docker-ce=$DOCKER_VERSION
   fi
+}
 
+setup_docker() {
   jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
   systemctl restart docker
   sleep 2 # a short pause to ensure the docker daemon starts
 }
 
-docker_setup
+create_aux_tools_dir() {
+  mkdir -p /tmp/aux_tools
+}
+
+extract_aux_tools_archive() {
+  mkdir -p /tmp/aux_tools
+  tar -xf "$AIRGAP_DIRECTORY/aux_tools.tar.gz" -C /tmp/aux_tools
+  echo "Extracted files"
+}
 
 # Installs the travis-tfw-combined-env commandline tool
-install_travis_tfw_combined_env() {
+download_travis_tfw_combined_env() {
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/4f1d7c45de878140b17535cb7443f1e9bf88ddf2/assets/tfw/usr/local/bin/travis-tfw-combined-env' > /usr/local/bin/travis-combined-env
   chmod +x /usr/local/bin/travis-combined-env
 }
 
-install_travis_tfw_combined_env
+install_travis_tfw_combined_env_from_airgap() {
+  cp /tmp/aux_tools/travis-combined-env /usr/local/bin/travis-combined-env
+  chmod +x /usr/local/bin/travis-combined-env
+}
 
 # Installs the wrapper script for running travis-worker
-install_travis_worker_wrapper() {
+download_travis_worker_wrapper() {
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/d75b070cbd9fa882a482463e498492a5a2c96a6f/assets/travis-worker/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
   chmod +x /usr/local/bin/travis-worker-wrapper
 }
 
-install_travis_worker_wrapper
+install_travis_worker_wrapper_from_airgap() {
+  cp /tmp/aux_tools/travis-worker-wrapper /usr/local/bin/travis-worker-wrapper
+  chmod +x /usr/local/bin/travis-worker-wrapper
+}
 
 # Installs the systemd service file for travis-worker
-install_travis_worker_service_file() {
+install_travis_user() {
   if ! id -u 'travis' > /dev/null 2>&1; then
     adduser \
     --system \
@@ -195,22 +213,29 @@ install_travis_worker_service_file() {
     #travis needs to be in the docker group to execute docker
     usermod -aG docker travis
   fi
+}
 
+download_travis_worker_service_file() {
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
+}
+
+install_travis_worker_file_from_airgap() {
+  cp /tmp/aux_tools/travis-worker.service /etc/systemd/system/multi-user.target.wants/travis-worker.service
+}
+
+configure_travis_worker_service() {
+  mkdir -p /var/tmp/travis-run.d/
+  chown -R travis:travis /var/tmp/travis-run.d/
   mkdir -p /etc/systemd/system/travis-worker.service.d
   echo "[Service]" > /etc/systemd/system/travis-worker.service.d/env.conf
   echo "Environment=\"TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION\"" >> /etc/systemd/system/travis-worker.service.d/env.conf
   systemctl daemon-reload
 }
 
-install_travis_worker_service_file
-
 # Pulls down the travis-worker image
 install_travis_worker() {
   docker pull travisci/worker:$TRAVIS_WORKER_VERSION
 }
-
-install_travis_worker
 
 pull_precise_build_images() {
   echo "Installing Ubuntu Precise build images"
@@ -234,9 +259,25 @@ pull_precise_build_images() {
   done
 }
 
+download_language_mapping() {
+  curl -fsSL 'https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json' > /tmp/aux_tools/generated-language-mapping.json
+}
+
+install_language_mapping_from_airgap() {
+  tar -xzf "$AIRGAP_DIRECTORY/aux_tools.tar.gz" generated-language-mapping.json > /tmp/generated-language-mapping.json
+  cat /tmp/generated-language-mapping.json
+}
+
+install_docker_images_from_airgap() {
+  for filename in $AIRGAP_DIRECTORY/docker_images/*.tar; do
+    docker load -i "$filename"
+  done
+}
+
 pull_trusty_build_images() {
   echo "Installing Ubuntu Trusty build images"
-  image_mappings_json=$(curl https://raw.githubusercontent.com/travis-infrastructure/terraform-config/master/aws-production-2/generated-language-mapping.json)
+
+  image_mappings_json=$(cat /tmp/aux_tools/generated-language-mapping.json)
 
   docker_images=$(echo "$image_mappings_json" | jq -r "[.[]] | unique | .[]")
 
@@ -260,23 +301,6 @@ pull_trusty_build_images() {
   done
 }
 
-if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
-  if [[ $BUILD_IMAGES == 'precise' ]]; then
-    pull_precise_build_images
-  else
-    pull_trusty_build_images
-  fi
-else
-  echo "Skip populating build images"
-fi
-
-create_run_dir() {
-  mkdir -p /var/tmp/travis-run.d/
-  chown -R travis:travis /var/tmp/travis-run.d/
-}
-
-create_run_dir
-
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
@@ -297,7 +321,45 @@ configure_travis_worker() {
   fi
 }
 
-configure_travis_worker
+if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
+  install_packages
+  install_docker
+  setup_docker
+  create_aux_tools_dir
+  download_travis_tfw_combined_env
+  download_travis_worker_wrapper
+  install_travis_user
+  download_travis_worker_service_file
+  configure_travis_worker_service
+  install_travis_worker
+
+
+  if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
+    if [[ $BUILD_IMAGES == 'precise' ]]; then
+      pull_precise_build_images
+    else
+      download_language_mapping
+      pull_trusty_build_images
+    fi
+  else
+    echo "Skip populating build images"
+  fi
+
+  configure_travis_worker
+else
+  setup_docker
+  create_aux_tools_dir
+  extract_aux_tools_archive
+  install_travis_tfw_combined_env_from_airgap
+  install_travis_worker_wrapper_from_airgap
+  install_travis_user
+  install_travis_worker_file_from_airgap
+  configure_travis_worker_service
+  install_language_mapping_from_airgap
+  install_docker_images_from_airgap
+  pull_trusty_build_images
+  configure_travis_worker
+fi
 
 
 ## Give travis-worker a kick to ensure the
