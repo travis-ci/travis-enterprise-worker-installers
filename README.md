@@ -30,10 +30,13 @@ $ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --tra
 
 This installs all necesary components, such as Docker and `travis-worker`. It also pulls down Trusty build images by default. If this is the first time you're setting up a worker machine with Trusty build images, please enable [this feature flag](https://docs.travis-ci.com/user/enterprise/trusty/#Enabling-the-Trusty-Beta-Feature-Flag) on your platform machine.
 
-If you need to use Precise build images, please pass in the `--travis_legacy_build_images=true` flag during installation:
+
+## Xenial build environment (beta)
+
+If you wish to use the Xenial build environment, please pass in the `--travis_beta_build_images=true` flag during installation:
 
 ```bash
-$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_legacy_build_images=true
+$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_beta_build_images=true
 ```
 
-This installs Precise build images and also configures the queue to `builds.linux`.
+This installs Xenial build images and also configures the queue to `builds.xenial`. Please note, that this requires Travis CI Enterprise 2.2.x or later.
