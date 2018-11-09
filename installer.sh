@@ -289,7 +289,7 @@ pull_xenial_build_images() {
   docker pull $opal
   docker pull $sardonyx
 
-  declare -a most_common_language_mappings=('default' 'go' 'node_js' 'php' 'python' 'ruby')
+  declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
   declare -a other_language_mappings=('haskell' 'erlang' 'perl')
 
   for lang_map in "${most_common_language_mappings[@]}"; do
