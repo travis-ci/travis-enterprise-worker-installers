@@ -216,7 +216,7 @@ install_travis_user() {
 }
 
 download_travis_worker_service_file() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/b0f4fc9502d3f383b3541d03ae558c3e431aef53/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/b0f4fc9502d3f383b3541d03ae558c3e431aef53/assets/travis-worker/travis-worker.service' > /etc/systemd/system/travis-worker.service
 }
 
 install_travis_worker_file_from_airgap() {
@@ -230,6 +230,7 @@ configure_travis_worker_service() {
   echo "[Service]" > /etc/systemd/system/travis-worker.service.d/env.conf
   echo "Environment=\"TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION\"" >> /etc/systemd/system/travis-worker.service.d/env.conf
   systemctl daemon-reload
+  systemctl enable travis-worker
 }
 
 # Pulls down the travis-worker image
