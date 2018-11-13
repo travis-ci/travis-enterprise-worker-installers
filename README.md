@@ -1,9 +1,6 @@
 # travis-enterprise-worker-installers
-Installer scripts for the Travis CI Enterprise Worker machines
 
-## installer.sh
-
-This is the default systemd-enabled installer we're using for Ubuntu 16.04 and later. This uses `overlay2` as storage driver which performs better than `aufs` and requires less setup than `devicemapper`.
+This is the installer for Travis CI Enterprise worker machines, running on Ubuntu 16.04 and later.
 
 # Hardware requirements
 
@@ -28,7 +25,7 @@ Then, execute the installer:
 $ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>"
 ```
 
-This installs all necesary components, such as Docker and `travis-worker`. It also pulls down Trusty build images by default. If this is the first time you're setting up a worker machine with Trusty build images, please enable [this feature flag](https://docs.travis-ci.com/user/enterprise/trusty/#Enabling-the-Trusty-Beta-Feature-Flag) on your platform machine.
+This installs all necesary components, such as Docker and `travis-worker`. It also pulls down Trusty build images by default. If you're on Enterprise 2.1.x and this is the first time you're setting up a worker machine with Trusty build images, please enable [this feature flag](https://docs.travis-ci.com/user/enterprise/trusty/#Enabling-the-Trusty-Beta-Feature-Flag) on your platform machine.
 
 
 ## Xenial build environment (beta)
