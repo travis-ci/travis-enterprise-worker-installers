@@ -36,8 +36,8 @@ while [ $# -gt 0 ]; do
     --travis_queue_name=*)
       TRAVIS_QUEUE_NAME="${1#*=}"
       ;;
-    --travis_legacy_build_images=*)
-      TRAVIS_LEGACY_BUILD_IMAGES="${1#*=}"
+    --travis_beta_build_images=*)
+      TRAVIS_BETA_BUILD_IMAGES="${1#*=}"
       ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
@@ -56,8 +56,8 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_host=\"demo.enterprise.travis-ci.com\"  *\\n"
       printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
-      printf "*  --travis_queue_name=\"builds.linux\"                        *\\n"
-      printf "*  --travis_legacy_build_images=true                         *\\n"
+      printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
+      printf "*  --travis_beta_build_images=true                           *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -68,7 +68,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [[ ! -n $DOCKER_VERSION ]]; then
-  export DOCKER_VERSION="17.12.0~ce-0~ubuntu"
+  export DOCKER_VERSION="18.06.1~ce~3-0~ubuntu"
 else
   export DOCKER_VERSION
 fi
@@ -80,20 +80,20 @@ else
 fi
 
 if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
-  export TRAVIS_WORKER_VERSION="v3.5.0"
+  export TRAVIS_WORKER_VERSION="v4.6.1"
 else
   export TRAVIS_WORKER_VERSION
 fi
 
-if [[ ! -n $TRAVIS_LEGACY_BUILD_IMAGES ]]; then
+if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
   export BUILD_IMAGES='trusty'
 else
-  export BUILD_IMAGES='precise'
+  export BUILD_IMAGES='xenial'
 
-  # Precise workers listen to the builds.linux by default
+  # Xenial workers listen to the builds.linux by default
   # We only set that though if the user didn't specify a different queue name
   if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.linux'
+    export TRAVIS_QUEUE_NAME='builds.xenial'
   fi
 fi
 
@@ -216,7 +216,7 @@ install_travis_user() {
 }
 
 download_travis_worker_service_file() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/master/assets/travis-worker/travis-worker.service' > /etc/systemd/system/multi-user.target.wants/travis-worker.service
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/b0f4fc9502d3f383b3541d03ae558c3e431aef53/assets/travis-worker/travis-worker.service' > /etc/systemd/system/travis-worker.service
 }
 
 install_travis_worker_file_from_airgap() {
@@ -230,33 +230,12 @@ configure_travis_worker_service() {
   echo "[Service]" > /etc/systemd/system/travis-worker.service.d/env.conf
   echo "Environment=\"TRAVIS_WORKER_SELF_IMAGE=travisci/worker:$TRAVIS_WORKER_VERSION\"" >> /etc/systemd/system/travis-worker.service.d/env.conf
   systemctl daemon-reload
+  systemctl enable travis-worker
 }
 
 # Pulls down the travis-worker image
 install_travis_worker() {
   docker pull travisci/worker:$TRAVIS_WORKER_VERSION
-}
-
-pull_precise_build_images() {
-  echo "Installing Ubuntu Precise build images"
-  # pick the languages you are interested in
-  langs='android erlang go haskell jvm node-js perl php python ruby'
-  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node_js:node-js')
-  tag=latest
-  for lang in $langs; do
-    docker pull quay.io/travisci/travis-"$lang":"$tag"
-    docker tag quay.io/travisci/travis-"$lang":"$tag" travis:"$lang"
-  done
-
-  # tag travis:ruby as travis:default
-  docker tag travis:ruby travis:default
-
-  for lang_map in "${lang_mappings[@]}"; do
-    map=$(echo "$lang_map"|cut -d':' -f 1)
-    lang=$(echo "$lang_map"|cut -d':' -f 2)
-
-    docker tag quay.io/travisci/travis-"$lang":"$tag" travis:"$map"
-  done
 }
 
 download_language_mapping() {
@@ -301,6 +280,36 @@ pull_trusty_build_images() {
   done
 }
 
+pull_xenial_build_images() {
+  echo "Installing Ubuntu 16.04 build images"
+
+  opal=travisci/ci-opal:packer-1541445935-e193d27
+  sardonyx=travisci/ci-sardonyx:packer-1541445940-e193d27
+
+  docker pull $opal
+  docker pull $sardonyx
+
+  declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
+  declare -a other_language_mappings=('haskell' 'erlang' 'perl')
+
+  for lang_map in "${most_common_language_mappings[@]}"; do
+    docker tag $sardonyx travis:"$lang_map"
+  done
+
+  for lang_map in "${other_language_mappings[@]}"; do
+    docker tag $opal travis:"$lang_map"
+  done
+
+  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
+
+  for lang_map in "${lang_mappings[@]}"; do
+    map=$(echo "$lang_map"|cut -d':' -f 1)
+    lang=$(echo "$lang_map"|cut -d':' -f 2)
+
+    docker tag travis:"$lang" travis:"$map"
+  done
+}
+
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
@@ -313,6 +322,7 @@ configure_travis_worker() {
   echo "export POOL_SIZE='2'" >> $TRAVIS_WORKER_CONFIG
   echo "export PROVIDER_NAME='docker'" >> $TRAVIS_WORKER_CONFIG
   echo "export TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'" >> $TRAVIS_WORKER_CONFIG
+  echo "export SILENCE_METRICS=\"true\"" >> $TRAVIS_WORKER_CONFIG
 
   if [[ -n $TRAVIS_QUEUE_NAME ]]; then
     echo "export QUEUE_NAME='$TRAVIS_QUEUE_NAME'" >> $TRAVIS_WORKER_CONFIG
@@ -335,8 +345,8 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
 
 
   if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
-    if [[ $BUILD_IMAGES == 'precise' ]]; then
-      pull_precise_build_images
+    if [[ $BUILD_IMAGES == 'xenial' ]]; then
+      pull_xenial_build_images
     else
       download_language_mapping
       pull_trusty_build_images
