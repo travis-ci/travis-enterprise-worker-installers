@@ -283,8 +283,8 @@ pull_trusty_build_images() {
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 build images"
 
-  opal=travisci/ci-opal:packer-1541445935-e193d27
-  sardonyx=travisci/ci-sardonyx:packer-1541445940-e193d27
+  opal=travisci/ci-opal:packer-1547455612-2c98a19
+  sardonyx=travisci/ci-sardonyx:packer-1547455648-2c98a19
 
   docker pull $opal
   docker pull $sardonyx
