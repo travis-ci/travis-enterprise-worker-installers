@@ -36,8 +36,8 @@ while [ $# -gt 0 ]; do
     --travis_queue_name=*)
       TRAVIS_QUEUE_NAME="${1#*=}"
       ;;
-    --travis_beta_build_images=*)
-      TRAVIS_BETA_BUILD_IMAGES="${1#*=}"
+    --travis_build_images=*)
+      TRAVIS_BUILD_IMAGES="${1#*=}"
       ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
@@ -47,20 +47,20 @@ while [ $# -gt 0 ]; do
       ;;
     *)
 
-      printf "**************************************************************\\n"
-      printf "* Error: Invalid argument.                                   *\\n"
-      printf "* Valid Arguments are:                                       *\\n"
-      printf "*  --travis_worker_version=x.x.x                             *\\n"
-      printf "*  --docker_version=x.x.x                                    *\\n"
-      printf "*  --docker_storage_driver=\"<driver>\"                        *\\n"
-      printf "*  --travis_enterprise_host=\"demo.enterprise.travis-ci.com\"  *\\n"
-      printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
-      printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
-      printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
-      printf "*  --travis_beta_build_images=true                           *\\n"
-      printf "*  --skip_docker_populate=true                               *\\n"
-      printf "*  --airgap_directory=\"<directory>\"                          *\\n"
-      printf "**************************************************************\\n"
+      printf "*********************************************************************\\n"
+      printf "* Error: Invalid argument.                                          *\\n"
+      printf "* Valid Arguments are:                                              *\\n"
+      printf "*  --travis_worker_version=x.x.x                                    *\\n"
+      printf "*  --docker_version=x.x.x                                           *\\n"
+      printf "*  --docker_storage_driver=\"<driver>\"                             *\\n"
+      printf "*  --travis_enterprise_host=\"demo.enterprise.travis-ci.com\"       *\\n"
+      printf "*  --travis_enterprise_security_token=\"token123\"                  *\\n"
+      printf "*  --travis_enterprise_build_endpoint=\"build-api\"                 *\\n"
+      printf "*  --travis_queue_name=\"builds.xenial\" (default: 'builds.xenial') *\\n"
+      printf "*  --travis_build_images=\"<trusty|xenial>\" (default: 'xenial')    *\\n"
+      printf "*  --skip_docker_populate=true                                      *\\n"
+      printf "*  --airgap_directory=\"<directory>\"                               *\\n"
+      printf "*********************************************************************\\n"
 
       exit 1
   esac
@@ -85,20 +85,12 @@ else
   export TRAVIS_WORKER_VERSION
 fi
 
-if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
-  export BUILD_IMAGES='trusty'
-else
+if [[ ! -n $TRAVIS_BUILD_IMAGES ]]; then
   export BUILD_IMAGES='xenial'
-
-  # Xenial workers listen to the builds.linux by default
-  # We only set that though if the user didn't specify a different queue name
-  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.xenial'
-  fi
 fi
 
 if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-  export TRAVIS_QUEUE_NAME='builds.trusty'
+  export TRAVIS_QUEUE_NAME='builds.xenial'
 else
   export TRAVIS_QUEUE_NAME
 fi
