@@ -9,7 +9,7 @@ DEFAULT_TRAVIS_BUILD_IMAGES=trusty
 
 ## Handle Arguments
 
-if [[ ! -n $1 ]]; then
+if [[ -z $1 ]]; then
   echo "No arguments provided, installing with"
   echo "default configuration values."
 fi
@@ -76,19 +76,19 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [[ ! -n $DOCKER_VERSION ]]; then
+if [[ -z $DOCKER_VERSION ]]; then
   export DOCKER_VERSION="18.06.1~ce~3-0~ubuntu"
 else
   export DOCKER_VERSION
 fi
 
-if [[ ! -n $DOCKER_STORAGE_DRIVER ]]; then
+if [[ -z $DOCKER_STORAGE_DRIVER ]]; then
   export DOCKER_STORAGE_DRIVER="overlay2"
 else
   export DOCKER_STORAGE_DRIVER
 fi
 
-if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
+if [[ -z $TRAVIS_WORKER_VERSION ]]; then
   export TRAVIS_WORKER_VERSION="v4.6.1"
 else
   export TRAVIS_WORKER_VERSION
@@ -96,31 +96,31 @@ fi
 
 if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
 
-  if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
+  if [[ -z $TRAVIS_BETA_BUILD_IMAGES ]]; then
     export BUILD_IMAGES='trusty'
   else
     export BUILD_IMAGES='xenial'
 
     # Xenial workers listen to the builds.xenial by defaul
     # We only set that though if the user didn't specify a different queue name
-    if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
       export TRAVIS_QUEUE_NAME='builds.xenial'
     fi
   fi
 
-  if [[ ! -n $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
+  if [[ -z $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
     export BUILD_IMAGES='trusty'
   else
     export BUILD_IMAGES='bionic'
 
     # Bionic workers listen to the builds.bionic by default
     # We only set that though if the user didn't specify a different queue name
-    if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
       export TRAVIS_QUEUE_NAME='builds.bionic'
     fi
   fi
 
-  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+  if [[ -z $TRAVIS_QUEUE_NAME ]]; then
     export TRAVIS_QUEUE_NAME='builds.trusty'
   else
     export TRAVIS_QUEUE_NAME
@@ -141,7 +141,7 @@ else
     fi
 fi
 
-if [[ ! -n $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
+if [[ -z $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
   export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="__build__"
 else
   export TRAVIS_ENTERPRISE_BUILD_ENDPOINT
@@ -286,7 +286,7 @@ install_language_mapping_from_airgap() {
 }
 
 install_docker_images_from_airgap() {
-  for filename in $AIRGAP_DIRECTORY/docker_images/*.tar; do
+  for filename in "$AIRGAP_DIRECTORY/docker_images/*.tar"; do
     docker load -i "$filename"
   done
 }
@@ -397,7 +397,7 @@ configure_travis_worker() {
   fi
 }
 
-if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
+if [[ -z "$AIRGAP_DIRECTORY" ]]; then
   install_packages
   install_docker
   setup_docker
@@ -410,7 +410,7 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   install_travis_worker
 
 
-  if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
+  if [[ -z $SKIP_DOCKER_POPULATE ]]; then
     if [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
     elif [[ $BUILD_IMAGES == 'bionic' ]]; then
