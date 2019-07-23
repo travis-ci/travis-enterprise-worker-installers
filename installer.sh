@@ -286,7 +286,7 @@ install_language_mapping_from_airgap() {
 }
 
 install_docker_images_from_airgap() {
-  for filename in $AIRGAP_DIRECTORY/docker_images/*.tar; do
+  for filename in "$AIRGAP_DIRECTORY"/docker_images/*.tar; do
     docker load -i "$filename"
   done
 }
