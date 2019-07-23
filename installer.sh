@@ -66,7 +66,7 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
       printf "*  --travis_beta_build_images=true (deprecated)              *\\n"
       printf "*  --travis_bionic_build_images=true (deprecated)            *\\n"
-      printf "*  --travis_build_images=[trusty, xenial, bnionic]           *\\n"
+      printf "*  --travis_build_images=[trusty, xenial, bionic]           *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
