@@ -5,6 +5,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 ##
+DEFAULT_TRAVIS_BUILD_IMAGES=trusty
 
 ## Handle Arguments
 
@@ -42,6 +43,9 @@ while [ $# -gt 0 ]; do
     --travis_bionic_build_images=*)
       TRAVIS_BIONIC_BUILD_IMAGES="${1#*=}"
       ;;
+    --travis_build_images=*)
+      TRAVIS_BUILD_IMAGES="${1#*=}"
+      ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
@@ -60,8 +64,9 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
       printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
-      printf "*  --travis_beta_build_images=true                           *\\n"
-      printf "*  --travis_bionic_build_images=true                           *\\n"
+      printf "*  --travis_beta_build_images=true (deprecated)              *\\n"
+      printf "*  --travis_bionic_build_images=true (deprecated)            *\\n"
+      printf "*  --travis_build_images=[trusty, xenial, bnionic]           *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -89,34 +94,51 @@ else
   export TRAVIS_WORKER_VERSION
 fi
 
-if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
-  export BUILD_IMAGES='trusty'
-else
-  export BUILD_IMAGES='xenial'
+if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
 
-  # Xenial workers listen to the builds.linux by default
-  # We only set that though if the user didn't specify a different queue name
-  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.xenial'
+  if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
+    export BUILD_IMAGES='trusty'
+  else
+    export BUILD_IMAGES='xenial'
+
+    # Xenial workers listen to the builds.xenial by defaul
+    # We only set that though if the user didn't specify a different queue name
+    if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME='builds.xenial'
+    fi
   fi
-fi
 
-if [[ ! -n $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
-  export BUILD_IMAGES='trusty'
-else
-  export BUILD_IMAGES='bionic'
+  if [[ ! -n $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
+    export BUILD_IMAGES='trusty'
+  else
+    export BUILD_IMAGES='bionic'
 
-  # Bionic workers listen to the builds.linux by default
-  # We only set that though if the user didn't specify a different queue name
-  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.bionic'
+    # Bionic workers listen to the builds.bionic by default
+    # We only set that though if the user didn't specify a different queue name
+    if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME='builds.bionic'
+    fi
   fi
-fi
 
-if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-  export TRAVIS_QUEUE_NAME='builds.trusty'
+  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+    export TRAVIS_QUEUE_NAME='builds.trusty'
+  else
+    export TRAVIS_QUEUE_NAME
+  fi
 else
-  export TRAVIS_QUEUE_NAME
+  case "$TRAVIS_BUILD_IMAGES" in
+    trusty|xenial|bionic)
+      export BUILD_IMAGES="$TRAVIS_BUILD_IMAGES"
+      ;;
+    *)
+      export BUILD_IMAGES="$DEFAULT_TRAVIS_BUILD_IMAGES"
+      ;;
+  esac
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME="builds.$BUILD_IMAGES"
+    else
+      export TRAVIS_QUEUE_NAME
+    fi
 fi
 
 if [[ ! -n $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
@@ -270,7 +292,7 @@ install_docker_images_from_airgap() {
 }
 
 pull_trusty_build_images() {
-  echo "Installing Ubuntu Trusty build images"
+  echo "Installing Ubuntu 14.04 (trusty) build images"
 
   image_mappings_json=$(cat /tmp/aux_tools/generated-language-mapping.json)
 
@@ -297,7 +319,7 @@ pull_trusty_build_images() {
 }
 
 pull_xenial_build_images() {
-  echo "Installing Ubuntu 16.04 build images"
+  echo "Installing Ubuntu 16.04 (xenial) build images"
 
   opal=travisci/ci-opal:packer-1547455612-2c98a19
   sardonyx=travisci/ci-sardonyx:packer-1547455648-2c98a19
@@ -327,7 +349,7 @@ pull_xenial_build_images() {
 }
 
 pull_bionic_build_images() {
-  echo "Installing Ubuntu 18.04 build images"
+  echo "Installing Ubuntu 18.04 (bionic) build images"
 
   ubuntu1804=travisci/ci-ubuntu-1804:packer-1560840999-dcc1c568
 
