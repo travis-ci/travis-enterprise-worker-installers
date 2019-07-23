@@ -39,6 +39,9 @@ while [ $# -gt 0 ]; do
     --travis_beta_build_images=*)
       TRAVIS_BETA_BUILD_IMAGES="${1#*=}"
       ;;
+    --travis_bionic_build_images=*)
+      TRAVIS_BIONIC_BUILD_IMAGES="${1#*=}"
+      ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
@@ -58,6 +61,7 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
       printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
       printf "*  --travis_beta_build_images=true                           *\\n"
+      printf "*  --travis_bionic_build_images=true                           *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -94,6 +98,18 @@ else
   # We only set that though if the user didn't specify a different queue name
   if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
     export TRAVIS_QUEUE_NAME='builds.xenial'
+  fi
+fi
+
+if [[ ! -n $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
+  export BUILD_IMAGES='trusty'
+else
+  export BUILD_IMAGES='bionic'
+
+  # Bionic workers listen to the builds.linux by default
+  # We only set that though if the user didn't specify a different queue name
+  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
+    export TRAVIS_QUEUE_NAME='builds.bionic'
   fi
 fi
 
@@ -310,6 +326,34 @@ pull_xenial_build_images() {
   done
 }
 
+pull_bionic_build_images() {
+  echo "Installing Ubuntu 18.04 build images"
+
+  ubuntu1804=travisci/ci-ubuntu-1804:packer-1560840999-dcc1c568
+
+  docker pull $ubuntu1804
+
+  declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
+  declare -a other_language_mappings=('haskell' 'erlang' 'perl')
+
+  for lang_map in "${most_common_language_mappings[@]}"; do
+    docker tag $ubuntu1804 travis:"$lang_map"
+  done
+
+  for lang_map in "${other_language_mappings[@]}"; do
+    docker tag $ubuntu1804 travis:"$lang_map"
+  done
+
+  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
+
+  for lang_map in "${lang_mappings[@]}"; do
+    map=$(echo "$lang_map"|cut -d':' -f 1)
+    lang=$(echo "$lang_map"|cut -d':' -f 2)
+
+    docker tag travis:"$lang" travis:"$map"
+  done
+}
+
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
@@ -347,6 +391,8 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
     if [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
+    elif [[ $BUILD_IMAGES == 'bionic' ]]; then
+      pull_bionic_build_images
     else
       download_language_mapping
       pull_trusty_build_images
