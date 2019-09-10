@@ -351,7 +351,7 @@ pull_xenial_build_images() {
 pull_bionic_build_images() {
   echo "Installing Ubuntu 18.04 (bionic) build images"
 
-  ubuntu1804=travisci/ci-ubuntu-1804:packer-1560840999-dcc1c568
+  ubuntu1804=travisci/ci-ubuntu-1804:packer-1566551110-e45a2919
 
   docker pull $ubuntu1804
 
