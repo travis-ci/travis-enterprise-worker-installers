@@ -30,10 +30,10 @@ This installs all necesary components, such as Docker and `travis-worker`. It al
 
 ## Xenial build environment (beta)
 
-If you wish to use the Xenial build environment, please pass in the `--travis_beta_build_images=true` flag during installation:
+If you wish to use the Xenial build environment, please pass in the `--travis_build_images=xenial` flag during installation:
 
 ```bash
-$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_beta_build_images=true
+$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_build_images=xenial
 ```
 
 This installs Xenial build images and also configures the queue to `builds.xenial`. Please note, that this requires Travis CI Enterprise 2.2.x or later.
