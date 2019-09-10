@@ -5,10 +5,11 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 ##
+DEFAULT_TRAVIS_BUILD_IMAGES=trusty
 
 ## Handle Arguments
 
-if [[ ! -n $1 ]]; then
+if [[ -z $1 ]]; then
   echo "No arguments provided, installing with"
   echo "default configuration values."
 fi
@@ -39,6 +40,12 @@ while [ $# -gt 0 ]; do
     --travis_beta_build_images=*)
       TRAVIS_BETA_BUILD_IMAGES="${1#*=}"
       ;;
+    --travis_bionic_build_images=*)
+      TRAVIS_BIONIC_BUILD_IMAGES="${1#*=}"
+      ;;
+    --travis_build_images=*)
+      TRAVIS_BUILD_IMAGES="${1#*=}"
+      ;;
     --skip_docker_populate=*)
       SKIP_DOCKER_POPULATE="${1#*=}"
       ;;
@@ -57,7 +64,9 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
       printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
-      printf "*  --travis_beta_build_images=true                           *\\n"
+      printf "*  --travis_beta_build_images=true (deprecated)              *\\n"
+      printf "*  --travis_bionic_build_images=true (deprecated)            *\\n"
+      printf "*  --travis_build_images=[trusty, xenial, bionic]           *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -67,43 +76,72 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [[ ! -n $DOCKER_VERSION ]]; then
+if [[ -z $DOCKER_VERSION ]]; then
   export DOCKER_VERSION="18.06.1~ce~3-0~ubuntu"
 else
   export DOCKER_VERSION
 fi
 
-if [[ ! -n $DOCKER_STORAGE_DRIVER ]]; then
+if [[ -z $DOCKER_STORAGE_DRIVER ]]; then
   export DOCKER_STORAGE_DRIVER="overlay2"
 else
   export DOCKER_STORAGE_DRIVER
 fi
 
-if [[ ! -n $TRAVIS_WORKER_VERSION ]]; then
+if [[ -z $TRAVIS_WORKER_VERSION ]]; then
   export TRAVIS_WORKER_VERSION="v4.6.1"
 else
   export TRAVIS_WORKER_VERSION
 fi
 
-if [[ ! -n $TRAVIS_BETA_BUILD_IMAGES ]]; then
-  export BUILD_IMAGES='trusty'
-else
-  export BUILD_IMAGES='xenial'
+if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
 
-  # Xenial workers listen to the builds.linux by default
-  # We only set that though if the user didn't specify a different queue name
-  if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.xenial'
+  if [[ -z $TRAVIS_BETA_BUILD_IMAGES ]]; then
+    export BUILD_IMAGES='trusty'
+  else
+    export BUILD_IMAGES='xenial'
+
+    # Xenial workers listen to the builds.xenial by defaul
+    # We only set that though if the user didn't specify a different queue name
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME='builds.xenial'
+    fi
   fi
-fi
 
-if [[ ! -n $TRAVIS_QUEUE_NAME ]]; then
-  export TRAVIS_QUEUE_NAME='builds.trusty'
+  if [[ -z $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
+    export BUILD_IMAGES='trusty'
+  else
+    export BUILD_IMAGES='bionic'
+
+    # Bionic workers listen to the builds.bionic by default
+    # We only set that though if the user didn't specify a different queue name
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME='builds.bionic'
+    fi
+  fi
+
+  if [[ -z $TRAVIS_QUEUE_NAME ]]; then
+    export TRAVIS_QUEUE_NAME='builds.trusty'
+  else
+    export TRAVIS_QUEUE_NAME
+  fi
 else
-  export TRAVIS_QUEUE_NAME
+  case "$TRAVIS_BUILD_IMAGES" in
+    trusty|xenial|bionic)
+      export BUILD_IMAGES="$TRAVIS_BUILD_IMAGES"
+      ;;
+    *)
+      export BUILD_IMAGES="$DEFAULT_TRAVIS_BUILD_IMAGES"
+      ;;
+  esac
+    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
+      export TRAVIS_QUEUE_NAME="builds.$BUILD_IMAGES"
+    else
+      export TRAVIS_QUEUE_NAME
+    fi
 fi
 
-if [[ ! -n $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
+if [[ -z $TRAVIS_ENTERPRISE_BUILD_ENDPOINT ]]; then
   export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="__build__"
 else
   export TRAVIS_ENTERPRISE_BUILD_ENDPOINT
@@ -248,13 +286,13 @@ install_language_mapping_from_airgap() {
 }
 
 install_docker_images_from_airgap() {
-  for filename in $AIRGAP_DIRECTORY/docker_images/*.tar; do
+  for filename in "$AIRGAP_DIRECTORY"/docker_images/*.tar; do
     docker load -i "$filename"
   done
 }
 
 pull_trusty_build_images() {
-  echo "Installing Ubuntu Trusty build images"
+  echo "Installing Ubuntu 14.04 (trusty) build images"
 
   image_mappings_json=$(cat /tmp/aux_tools/generated-language-mapping.json)
 
@@ -281,7 +319,7 @@ pull_trusty_build_images() {
 }
 
 pull_xenial_build_images() {
-  echo "Installing Ubuntu 16.04 build images"
+  echo "Installing Ubuntu 16.04 (xenial) build images"
 
   opal=travisci/ci-opal:packer-1564752277-0c06deb6
   sardonyx=travisci/ci-sardonyx:packer-1564753982-0c06deb6
@@ -298,6 +336,34 @@ pull_xenial_build_images() {
 
   for lang_map in "${other_language_mappings[@]}"; do
     docker tag $opal travis:"$lang_map"
+  done
+
+  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
+
+  for lang_map in "${lang_mappings[@]}"; do
+    map=$(echo "$lang_map"|cut -d':' -f 1)
+    lang=$(echo "$lang_map"|cut -d':' -f 2)
+
+    docker tag travis:"$lang" travis:"$map"
+  done
+}
+
+pull_bionic_build_images() {
+  echo "Installing Ubuntu 18.04 (bionic) build images"
+
+  ubuntu1804=travisci/ci-ubuntu-1804:packer-1560840999-dcc1c568
+
+  docker pull $ubuntu1804
+
+  declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
+  declare -a other_language_mappings=('haskell' 'erlang' 'perl')
+
+  for lang_map in "${most_common_language_mappings[@]}"; do
+    docker tag $ubuntu1804 travis:"$lang_map"
+  done
+
+  for lang_map in "${other_language_mappings[@]}"; do
+    docker tag $ubuntu1804 travis:"$lang_map"
   done
 
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
@@ -331,7 +397,7 @@ configure_travis_worker() {
   fi
 }
 
-if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
+if [[ -z "$AIRGAP_DIRECTORY" ]]; then
   install_packages
   install_docker
   setup_docker
@@ -344,9 +410,11 @@ if [[ ! -n "$AIRGAP_DIRECTORY" ]]; then
   install_travis_worker
 
 
-  if [[ ! -n $SKIP_DOCKER_POPULATE ]]; then
+  if [[ -z $SKIP_DOCKER_POPULATE ]]; then
     if [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
+    elif [[ $BUILD_IMAGES == 'bionic' ]]; then
+      pull_bionic_build_images
     else
       download_language_mapping
       pull_trusty_build_images
