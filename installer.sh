@@ -397,9 +397,11 @@ configure_travis_worker() {
   fi
 
   if [[ $BUILD_IMAGES == 'bionic' ]]; then
-    echo "export TRAVIS_WORKER_DOCKER_BINDS=\"/sys/fs/cgroup:/sys/fs/cgroup\"" >> $TRAVIS_WORKER_CONFIG
-    echo "export TRAVIS_WORKER_DOCKER_SECURITY_OPT=\"seccomp=unconfined\"" >> $TRAVIS_WORKER_CONFIG
-    echo "export TRAVIS_WORKER_DOCKER_TMPFS_MAP=\"/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k\"" >> $TRAVIS_WORKER_CONFIG
+    {
+      echo "export TRAVIS_WORKER_DOCKER_BINDS=\"/sys/fs/cgroup:/sys/fs/cgroup\""
+      echo "export TRAVIS_WORKER_DOCKER_SECURITY_OPT=\"seccomp=unconfined\""
+      echo "export TRAVIS_WORKER_DOCKER_TMPFS_MAP=\"/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k\""
+    } >> $TRAVIS_WORKER_CONFIG
   fi
 }
 
