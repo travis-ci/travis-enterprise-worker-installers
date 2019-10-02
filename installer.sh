@@ -55,6 +55,8 @@ while [ $# -gt 0 ]; do
     *)
 
       printf "**************************************************************\\n"
+      printf "* Installer version: v6.2.2-01                               *\\n"
+      printf "**************************************************************\\n"
       printf "* Error: Invalid argument.                                   *\\n"
       printf "* Valid Arguments are:                                       *\\n"
       printf "*  --travis_worker_version=x.x.x                             *\\n"
