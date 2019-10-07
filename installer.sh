@@ -254,7 +254,7 @@ install_travis_user() {
 }
 
 download_travis_worker_service_file() {
-  cp tools/travis-worker.service > /etc/systemd/system/travis-worker.service
+  cp tools/travis-worker.service /etc/systemd/system/travis-worker.service
 }
 
 install_travis_worker_file_from_airgap() {
@@ -277,7 +277,7 @@ install_travis_worker() {
 }
 
 download_language_mapping() {
-  cp tools/generated-language-mapping.json > /tmp/aux_tools/generated-language-mapping.json
+  cp tools/generated-language-mapping.json /tmp/aux_tools/generated-language-mapping.json
 }
 
 install_language_mapping_from_airgap() {
