@@ -218,7 +218,7 @@ extract_aux_tools_archive() {
 
 # Installs the travis-tfw-combined-env commandline tool
 download_travis_tfw_combined_env() {
-  cp tools/travis-combined-env /usr/local/bin/travis-combined-env
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-combined-env' > /usr/local/bin/travis-combined-env
 }
 
 install_travis_tfw_combined_env_from_airgap() {
@@ -228,7 +228,7 @@ install_travis_tfw_combined_env_from_airgap() {
 
 # Installs the wrapper script for running travis-worker
 download_travis_worker_wrapper() {
-  cp tools/travis-worker-wrapper /usr/local/bin/travis-worker-wrapper
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
 }
 
 install_travis_worker_wrapper_from_airgap() {
@@ -254,7 +254,7 @@ install_travis_user() {
 }
 
 download_travis_worker_service_file() {
-  cp tools/travis-worker.service /etc/systemd/system/travis-worker.service
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-worker.service' > /etc/systemd/system/travis-worker.service
 }
 
 install_travis_worker_file_from_airgap() {
@@ -277,7 +277,7 @@ install_travis_worker() {
 }
 
 download_language_mapping() {
-  cp tools/generated-language-mapping.json /tmp/aux_tools/generated-language-mapping.json
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/generated-language-mapping.json' > /tmp/aux_tools/generated-language-mapping.json
 }
 
 install_language_mapping_from_airgap() {
