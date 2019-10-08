@@ -218,8 +218,7 @@ extract_aux_tools_archive() {
 
 # Installs the travis-tfw-combined-env commandline tool
 download_travis_tfw_combined_env() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/4f1d7c45de878140b17535cb7443f1e9bf88ddf2/assets/tfw/usr/local/bin/travis-tfw-combined-env' > /usr/local/bin/travis-combined-env
-  chmod +x /usr/local/bin/travis-combined-env
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-combined-env' > /usr/local/bin/travis-combined-env
 }
 
 install_travis_tfw_combined_env_from_airgap() {
@@ -229,8 +228,7 @@ install_travis_tfw_combined_env_from_airgap() {
 
 # Installs the wrapper script for running travis-worker
 download_travis_worker_wrapper() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/d75b070cbd9fa882a482463e498492a5a2c96a6f/assets/travis-worker/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
-  chmod +x /usr/local/bin/travis-worker-wrapper
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
 }
 
 install_travis_worker_wrapper_from_airgap() {
@@ -256,7 +254,7 @@ install_travis_user() {
 }
 
 download_travis_worker_service_file() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/terraform-config/b0f4fc9502d3f383b3541d03ae558c3e431aef53/assets/travis-worker/travis-worker.service' > /etc/systemd/system/travis-worker.service
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-worker.service' > /etc/systemd/system/travis-worker.service
 }
 
 install_travis_worker_file_from_airgap() {
@@ -279,7 +277,7 @@ install_travis_worker() {
 }
 
 download_language_mapping() {
-  curl -fsSL 'https://raw.githubusercontent.com/travis-infrastructure/terraform-config/98b42116812f4e4612bba23d4efd82a934e27c79/aws-production-2/generated-language-mapping.json' > /tmp/aux_tools/generated-language-mapping.json
+  curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/generated-language-mapping.json' > /tmp/aux_tools/generated-language-mapping.json
 }
 
 install_language_mapping_from_airgap() {
