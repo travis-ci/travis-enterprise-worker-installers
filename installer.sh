@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
     *)
 
       printf "**************************************************************\\n"
-      printf "* Installer version: v6.2.2-01                               *\\n"
+      printf "* Installer version: v6.2.2-02                               *\\n"
       printf "**************************************************************\\n"
       printf "* Error: Invalid argument.                                   *\\n"
       printf "* Valid Arguments are:                                       *\\n"
