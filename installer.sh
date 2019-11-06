@@ -219,6 +219,7 @@ extract_aux_tools_archive() {
 # Installs the travis-tfw-combined-env commandline tool
 download_travis_tfw_combined_env() {
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-combined-env' > /usr/local/bin/travis-combined-env
+  chmod +x /usr/local/bin/travis-combined-env
 }
 
 install_travis_tfw_combined_env_from_airgap() {
@@ -229,6 +230,7 @@ install_travis_tfw_combined_env_from_airgap() {
 # Installs the wrapper script for running travis-worker
 download_travis_worker_wrapper() {
   curl -fsSL 'https://raw.githubusercontent.com/travis-ci/travis-enterprise-worker-installers/master/tools/travis-worker-wrapper' > /usr/local/bin/travis-worker-wrapper
+  chmod +x /usr/local/bin/travis-worker-wrapper
 }
 
 install_travis_worker_wrapper_from_airgap() {
