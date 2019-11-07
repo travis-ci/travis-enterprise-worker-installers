@@ -6,6 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 ##
 DEFAULT_TRAVIS_BUILD_IMAGES=trusty
+DEFAULT_TRAVIS_WORKER_VERSION="v6.2.2"
 
 ## Handle Arguments
 
@@ -91,7 +92,7 @@ else
 fi
 
 if [[ -z $TRAVIS_WORKER_VERSION ]]; then
-  export TRAVIS_WORKER_VERSION="v4.6.1"
+  export TRAVIS_WORKER_VERSION="$DEFAULT_TRAVIS_WORKER_VERSION"
 else
   export TRAVIS_WORKER_VERSION
 fi
