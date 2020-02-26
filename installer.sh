@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 ##
 DEFAULT_TRAVIS_BUILD_IMAGES=trusty
-DEFAULT_TRAVIS_WORKER_VERSION="v6.2.2"
+DEFAULT_TRAVIS_WORKER_VERSION="v6.2.8"
 
 ## Handle Arguments
 
@@ -324,8 +324,8 @@ pull_trusty_build_images() {
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 (xenial) build images"
 
-  opal=travisci/ci-opal:packer-1564752277-0c06deb6
-  sardonyx=travisci/ci-sardonyx:packer-1564753982-0c06deb6
+  opal=travisci/ci-opal:packer-1576243490-60d50014
+  sardonyx=travisci/ci-sardonyx:packer-1576238197-60d50014
 
   docker pull $opal
   docker pull $sardonyx
@@ -354,7 +354,7 @@ pull_xenial_build_images() {
 pull_bionic_build_images() {
   echo "Installing Ubuntu 18.04 (bionic) build images"
 
-  ubuntu1804=travisci/ci-ubuntu-1804:packer-1566551110-e45a2919
+  ubuntu1804=travisci/ci-ubuntu-1804:packer-1582574251-a9b1ae58
 
   docker pull $ubuntu1804
 
