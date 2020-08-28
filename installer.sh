@@ -198,7 +198,7 @@ install_docker() {
   apt-get update
 
   if ! docker version &>/dev/null; then
-    apt-get install -y docker-ce=$DOCKER_VERSION
+    apt-get install -y docker-ce="$DOCKER_VERSION"
   fi
 }
 
