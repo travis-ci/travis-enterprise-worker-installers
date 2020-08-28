@@ -80,7 +80,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [[ -z $DOCKER_VERSION ]]; then
-  export DOCKER_VERSION="18.06.1~ce~3-0~ubuntu"
+  export DOCKER_VERSION="5:19.03.12~3-0~ubuntu"
 else
   export DOCKER_VERSION
 fi
