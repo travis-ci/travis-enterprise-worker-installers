@@ -5,7 +5,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 ##
-DEFAULT_TRAVIS_BUILD_IMAGES=trusty
+DEFAULT_TRAVIS_BUILD_IMAGES=xenial
 DEFAULT_TRAVIS_WORKER_VERSION="v6.2.2"
 
 ## Handle Arguments
@@ -66,10 +66,10 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_enterprise_host=\"demo.enterprise.travis-ci.com\"  *\\n"
       printf "*  --travis_enterprise_security_token=\"token123\"             *\\n"
       printf "*  --travis_enterprise_build_endpoint=\"build-api\"            *\\n"
-      printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
+      printf "*  --travis_queue_name=\"builds.xenial\"                       *\\n"
       printf "*  --travis_beta_build_images=true (deprecated)              *\\n"
       printf "*  --travis_bionic_build_images=true (deprecated)            *\\n"
-      printf "*  --travis_build_images=[trusty, xenial, bionic]           *\\n"
+      printf "*  --travis_build_images=[xenial, bionic]                    *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -100,9 +100,9 @@ fi
 if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
 
   if [[ -z $TRAVIS_BETA_BUILD_IMAGES ]]; then
-    export BUILD_IMAGES='trusty'
-  else
     export BUILD_IMAGES='xenial'
+  else
+    export BUILD_IMAGES='bionic'
 
     # Xenial workers listen to the builds.xenial by defaul
     # We only set that though if the user didn't specify a different queue name
@@ -112,7 +112,7 @@ if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
   fi
 
   if [[ -z $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
-    export BUILD_IMAGES='trusty'
+    export BUILD_IMAGES='xenial'
   else
     export BUILD_IMAGES='bionic'
 
@@ -124,13 +124,13 @@ if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
   fi
 
   if [[ -z $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.trusty'
+    export TRAVIS_QUEUE_NAME='builds.xenial'
   else
     export TRAVIS_QUEUE_NAME
   fi
 else
   case "$TRAVIS_BUILD_IMAGES" in
-    trusty|xenial|bionic)
+    xenial|bionic)
       export BUILD_IMAGES="$TRAVIS_BUILD_IMAGES"
       ;;
     *)
@@ -294,33 +294,6 @@ install_docker_images_from_airgap() {
   done
 }
 
-pull_trusty_build_images() {
-  echo "Installing Ubuntu 14.04 (trusty) build images"
-
-  image_mappings_json=$(cat /tmp/aux_tools/generated-language-mapping.json)
-
-  docker_images=$(echo "$image_mappings_json" | jq -r "[.[]] | unique | .[]")
-
-  for docker_image in $docker_images; do
-    docker pull "$docker_image"
-
-    langs=$(echo "$image_mappings_json" | jq -r "to_entries | map(select(.value | contains(\"$docker_image\"))) | .[] .key")
-
-    for lang in $langs; do
-      docker tag "$docker_image" travis:"$lang"
-    done
-  done
-
-  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
-
-  for lang_map in "${lang_mappings[@]}"; do
-    map=$(echo "$lang_map"|cut -d':' -f 1)
-    lang=$(echo "$lang_map"|cut -d':' -f 2)
-
-    docker tag travis:"$lang" travis:"$map"
-  done
-}
-
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 (xenial) build images"
 
@@ -382,7 +355,6 @@ pull_bionic_build_images() {
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
 
-  # Trusty images don't seem to like SSH
   # shellcheck disable=SC2129
   echo "export TRAVIS_WORKER_DOCKER_NATIVE=\"true\"" >> $TRAVIS_WORKER_CONFIG
   echo "export AMQP_URI=\"amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis\"" >> $TRAVIS_WORKER_CONFIG
@@ -396,7 +368,7 @@ configure_travis_worker() {
   if [[ -n $TRAVIS_QUEUE_NAME ]]; then
     echo "export QUEUE_NAME='$TRAVIS_QUEUE_NAME'" >> $TRAVIS_WORKER_CONFIG
   else
-    echo "export QUEUE_NAME='builds.trusty'" >> $TRAVIS_WORKER_CONFIG
+    echo "export QUEUE_NAME='builds.xenial'" >> $TRAVIS_WORKER_CONFIG
   fi
 
   if [[ $BUILD_IMAGES == 'bionic' ]]; then
@@ -422,13 +394,11 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
 
 
   if [[ -z $SKIP_DOCKER_POPULATE ]]; then
-    if [[ $BUILD_IMAGES == 'xenial' ]]; then
-      pull_xenial_build_images
-    elif [[ $BUILD_IMAGES == 'bionic' ]]; then
+    if [[ $BUILD_IMAGES == 'bionic' ]]; then
       pull_bionic_build_images
     else
       download_language_mapping
-      pull_trusty_build_images
+      pull_xenial_build_images
     fi
   else
     echo "Skip populating build images"
@@ -446,7 +416,7 @@ else
   configure_travis_worker_service
   install_language_mapping_from_airgap
   install_docker_images_from_airgap
-  pull_trusty_build_images
+  pull_xenial_build_images
   configure_travis_worker
 fi
 
