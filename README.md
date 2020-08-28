@@ -2,14 +2,14 @@
 
 This is the installer for Travis CI Enterprise worker machines, running on Ubuntu 16.04 and later.
 
-# Hardware requirements
+# Requirements
 
 - 8 CPU Cores
 - 16Gig RAM
 - At least 40GB HDD
-- Ubuntu 16.04
+- Ubuntu 16.04 or later
 
-On AWS EC2 the `c4.2xlarge` and bigger are a good fit. _Please note: You need to configure the harddisk capacity manually._
+On AWS EC2 the `c4.2xlarge` instance types and bigger are a good fit. _Please note: You need to configure the harddisk capacity manually._
 
 # Usage
 
@@ -25,15 +25,15 @@ Then, execute the installer:
 $ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>"
 ```
 
-This installs all necesary components, such as Docker and `travis-worker`. It also pulls down Trusty build images by default. If you're on Enterprise 2.1.x and this is the first time you're setting up a worker machine with Trusty build images, please enable [this feature flag](https://docs.travis-ci.com/user/enterprise/trusty/#Enabling-the-Trusty-Beta-Feature-Flag) on your platform machine.
+This installs all necesary components, such as Docker and `travis-worker`. It also pulls down Xenial build images by default.
 
 
-## Xenial build environment (beta)
+## Bionic build environment (beta)
 
-If you wish to use the Xenial build environment, please pass in the `--travis_build_images=xenial` flag during installation:
+If you wish to use the Bionic build environment, please pass in the `--travis_build_images=bionic` flag during installation:
 
 ```bash
-$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_build_images=xenial
+$ sudo bash /tmp/installer.sh --travis_enterprise_host="<enterprise host>" --travis_enterprise_security_token="<rabbitmq password>" --travis_build_images=bionic
 ```
 
-This installs Xenial build images and also configures the queue to `builds.xenial`. Please note, that this requires Travis CI Enterprise 2.2.x or later.
+This installs Bionic build images and also configures the queue to `builds.bionic`. Please note, that this requires Travis CI Enterprise 2.2.x or later.
