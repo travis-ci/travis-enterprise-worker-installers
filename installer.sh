@@ -353,21 +353,21 @@ pull_xenial_build_images() {
 
 pull_build_images() {
   ubuntu_images=$1
-  image_name=`echo $ubuntu_images | cut -d':' -f 1`
+  image_name=$(echo "$ubuntu_images" | cut -d':' -f 1)
 
   echo "Installing $image_name build images"
 
-  docker pull $ubuntu_images
+  docker pull "$ubuntu_images"
 
   declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
   declare -a other_language_mappings=('haskell' 'erlang' 'perl')
 
   for lang_map in "${most_common_language_mappings[@]}"; do
-    docker tag $ubuntu_images travis:"$lang_map"
+    docker tag "$ubuntu_images" travis:"$lang_map"
   done
 
   for lang_map in "${other_language_mappings[@]}"; do
-    docker tag $ubuntu_images travis:"$lang_map"
+    docker tag "$ubuntu_images" travis:"$lang_map"
   done
 
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
@@ -430,7 +430,7 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
     elif [[ $BUILD_IMAGES == 'bionic' ]]; then
       pull_build_images  travisci/ci-ubuntu-1804:packer-1596619525-f370839c
     elif [[ $BUILD_IMAGES == 'focal' ]]; then
-      pull_build_images  travisci/ci-ubuntu-2004:packer-1595944388-10efd2a2
+      pull_build_images  travisci/ci-ubuntu-2004:packer-1599557602-606a7440
     else
       download_language_mapping
       pull_trusty_build_images
