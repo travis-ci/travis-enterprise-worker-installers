@@ -98,7 +98,7 @@ fi
 apt-get update
 
 # basics tools install
-apt-get install curl -y
+apt-get install zfsutils-linux curl -y
 
 ## Install snapd but it does not make sense as if snapd not present it requires system to reboot to take effect.
 #apt-get install snapd fail2ban htop iotop glances atop nmap jq -y
@@ -118,30 +118,48 @@ snap connect travis-worker:lxd lxd:lxd
 mkdir -p /etc/default
 configure_travis_worker
 
-# the user can use image name or just pass architecture and linux distro so TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP can resolve the image name
-if [[ -v TRAVIS_LXD_INSTALL_SCRIPT_IMAGE ]]; then
-  image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}"
-else
-  image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
-fi
+# receive the image name based on architecture and distro
+image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
+
+#mkfs
+mkfs.ext4 -F /dev/nvme0n1p5
+mkdir -p /mnt/data
+echo "/dev/nvme0n1p5 /mnt/data ext4 errors=remount-ro 0 0" >> /etc/fstab
+mount -a 2>/dev/null
+rm -rf /mnt/data/*
 
 # downloading the image
 if test -f $image_file; then
   echo 'nothing to do - the image is already downloaded'
 else
-  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output $image_file
+  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output $image_file
 fi
 
-# installing the image
+# installing the image and set lxc config
+lxc storage create instances zfs source=/dev/nvme0n1p4 volume.zfs.use_refquota=true
+zfs set sync=disabled instances
+zfs set atime=off instances
 
+
+lxc storage create data dir source=/mnt/data
+
+lxc network create lxdbr0 dns.mode=none ipv4.address=192.168.0.1/24 ipv4.dhcp=false ipv4.firewall=false
+ipv6enabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
+if [ "$ipv6enabled" == 0 ]; then
+  lxc network set lxdbr0 ipv6.dhcp true
+  lxc network set lxdbr0 ipv6.address 2001:db8::1/64
+  lxc network set lxdbr0 ipv6.nat true
+else
+  lxc network set lxdbr0 ipv6.address none
+fi
+
+lxc profile device add default eth0 nic nictype=bridged parent=lxdbr0 security.mac_filtering=true
+lxc profile device add default root disk path=/ pool=instances
+
+####
 lxc image import $image_file --alias travis-image
-mkdir -p /containers
-lxc storage create default dir source=/containers
-lxc profile device add default root disk path=/ pool=default
-lxc network create br-c1
-lxc launch travis-image travis-container
+lxc launch travis-image default
 
-lxc config device add travis-container eth0 nic nictype=bridged parent=br-c1 name=eth0
 
 # Force reboot
 shutdown -r 0
