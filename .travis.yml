@@ -3,6 +3,8 @@ addons:
   apt:
     packages:
     - shellcheck
-script: shellcheck -s bash *.sh
+script:
+  - shellcheck -s bash *.sh
+  - shellcheck -s bash lxd/*.sh
 notifications:
   email: never
