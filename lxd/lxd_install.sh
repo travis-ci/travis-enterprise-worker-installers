@@ -2,39 +2,48 @@
 set -eux
 
 # functions
-export_travis_worker_config() {
-export TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
-export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
-export TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
-export TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
-export TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
-export BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
-export TRAVIS_WORKER_DOCKER_NATIVE="true"
-export AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
-export TRAVIS_WORKER_DOCKER_NATIVE="true"
-export TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'
-export POOL_SIZE='2'
-export PROVIDER_NAME='docker'
-export TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'
-export SILENCE_METRICS="true"
-export TRAVIS_WORKER_DOCKER_BINDS="/sys/fs/cgroup:/sys/fs/cgroup"
-export TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
-export TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
-export QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+configure_travis_worker() {
+TRAVIS_WORKER_CONFIG_FILE_PATH="/etc/environment"
+
+cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
+TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
+TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
+TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
+TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
+BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
+TRAVIS_WORKER_DOCKER_NATIVE="true"
+AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
+TRAVIS_WORKER_DOCKER_NATIVE="true"
+TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'
+POOL_SIZE='2'
+PROVIDER_NAME='docker'
+TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'
+SILENCE_METRICS="true"
+TRAVIS_WORKER_DOCKER_BINDS="/sys/fs/cgroup:/sys/fs/cgroup"
+TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
+TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
+QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+EOM
 }
 
 
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
-TRAVIS_WORKER_CONFIG_FILE_PATH="/etc/default/travis-worker"
-declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=( ["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz" )
+
+declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=( ["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
+                                                  ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
+                                                  ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
+                                                  ["s390x-bionic"]="ubuntu-18.04-full-1591342433.tar.gz"
+                                                  ["arm64-focal"]="ubuntu-20.04-full-1604305461.tar.gz"
+                                                  ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
+                                                  ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
+                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz" )
 
 
 
 # variables
 #TRAVIS_LXD_INSTALL_SCRIPT_TZ="${TRAVIS_LXD_INSTALL_SCRIPT_TZ:-Europe/London}" # set your time zone
-TRAVIS_LXD_INSTALL_SCRIPT_ARCH="${TRAVIS_LXD_INSTALL_SCRIPT_ARCH:-amd64}"
-TRAVIS_LXD_INSTALL_SCRIPT_DISTRO="${TRAVIS_LXD_INSTALL_SCRIPT_DISTRO:-focal}"
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
 
@@ -55,6 +64,9 @@ while [ $# -gt 0 ]; do
       ;;
     --travis_enterprise_host=*)
       TRAVIS_ENTERPRISE_HOST="${1#*=}"
+      ;;
+    --travis_build_images_arch=*)
+      TRAVIS_BUILD_IMAGES_ARCH="${1#*=}"
   esac
   shift
 done
@@ -66,6 +78,7 @@ TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterpris
 TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}"
 TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
+TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
 
 
 
@@ -103,13 +116,13 @@ snap set lxd shiftfs.enable=true
 snap install travis-worker --edge
 snap connect travis-worker:lxd lxd:lxd
 mkdir -p /etc/default
-export_travis_worker_config
+configure_travis_worker
 
 # the user can use image name or just pass architecture and linux distro so TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP can resolve the image name
 if [[ -v TRAVIS_LXD_INSTALL_SCRIPT_IMAGE ]]; then
   image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}"
 else
-  image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_LXD_INSTALL_SCRIPT_ARCH}-${TRAVIS_LXD_INSTALL_SCRIPT_DISTRO}]"
+  image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
 fi
 
 # downloading the image
@@ -130,4 +143,5 @@ lxc launch travis-image travis-container
 
 lxc config device add travis-container eth0 nic nictype=bridged parent=br-c1 name=eth0
 
-
+# Force reboot
+shutdown -r 0
