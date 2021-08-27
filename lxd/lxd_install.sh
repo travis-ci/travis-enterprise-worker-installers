@@ -27,7 +27,6 @@ QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
 EOM
 }
 
-
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
 
@@ -43,7 +42,6 @@ declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=( ["amd64-focal"]="travis-ci-ubu
 
 
 # variables
-#TRAVIS_LXD_INSTALL_SCRIPT_TZ="${TRAVIS_LXD_INSTALL_SCRIPT_TZ:-Europe/London}" # set your time zone
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
 
@@ -71,7 +69,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-
 # travis-worker config
 #TRAVIS_ENTERPRISE_SECURITY_TOKEN="H3Tve2EbLECL2u3VQ_9qkSE5OhTD8fsSBaxD6Fne1SHcxha93E2_gwsBe7W7yc_1"
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterprise.com
@@ -79,9 +76,6 @@ TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}
 TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
 TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
-
-
-
 
 if [[ ! -v TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
  echo 'please set travis_enterprise_security_token'
@@ -93,42 +87,40 @@ if [[ ! -v TRAVIS_ENTERPRISE_HOST ]]; then
  exit 1
 fi
 
-#ln -snf /usr/share/zoneinfo/$TRAVIS_LXD_INSTALL_SCRIPT_TZ /etc/localtime && echo $TRAVIS_LXD_INSTALL_SCRIPT_TZ > /etc/timezone
-
+echo "Updating the OS"
 apt-get update
 
-# basics tools install
+echo "Installing tools"
 apt-get install zfsutils-linux curl -y
-
-## Install snapd but it does not make sense as if snapd not present it requires system to reboot to take effect.
-#apt-get install snapd fail2ban htop iotop glances atop nmap jq -y
-
 export PATH=/snap/bin/:${PATH}
 
-## Install and setup LXD
+echo "Installing and setting up LXD"
 apt-get remove --purge --yes lxd lxd-client liblxc1 lxcfs
-
 snap install lxd
 snap set lxd shiftfs.enable=true
 
-
 # install travis worker binary
+echo "Installing travis worker binary"
 snap install travis-worker --edge
 snap connect travis-worker:lxd lxd:lxd
-mkdir -p /etc/default
 configure_travis_worker
 
-# receive the image name based on architecture and distro
-image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
+
 
 #mkfs
+echo "Creating partition for data"
 mkfs.ext4 -F /dev/nvme0n1p5
 mkdir -p /mnt/data
 echo "/dev/nvme0n1p5 /mnt/data ext4 errors=remount-ro 0 0" >> /etc/fstab
 mount -a 2>/dev/null
 rm -rf /mnt/data/*
 
+echo "Creating lxc storage for data"
+lxc storage create data dir source=/mnt/data
+
 # downloading the image
+echo "downloading the image"
+image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
 if test -f $image_file; then
   echo 'nothing to do - the image is already downloaded'
 else
@@ -136,30 +128,30 @@ else
 fi
 
 # installing the image and set lxc config
+echo "Creating lxc storage for instances"
 lxc storage create instances zfs source=/dev/nvme0n1p4 volume.zfs.use_refquota=true
 zfs set sync=disabled instances
 zfs set atime=off instances
 
-
-lxc storage create data dir source=/mnt/data
-
+echo "configuring lxc network"
 lxc network create lxdbr0 dns.mode=none ipv4.address=192.168.0.1/24 ipv4.dhcp=false ipv4.firewall=false
-ipv6enabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
-if [ "$ipv6enabled" == 0 ]; then
+ipv6disabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
+if [ "$ipv6disabled" == 0 ]; then # ipv6 not disabled
   lxc network set lxdbr0 ipv6.dhcp true
   lxc network set lxdbr0 ipv6.address 2001:db8::1/64
   lxc network set lxdbr0 ipv6.nat true
 else
   lxc network set lxdbr0 ipv6.address none
 fi
-
 lxc profile device add default eth0 nic nictype=bridged parent=lxdbr0 security.mac_filtering=true
 lxc profile device add default root disk path=/ pool=instances
 
-####
+
+echo "Importing and starting image"
 lxc image import $image_file --alias travis-image
 lxc launch travis-image default
 
 
 # Force reboot
+echo "Rebooting the machine"
 shutdown -r 0
