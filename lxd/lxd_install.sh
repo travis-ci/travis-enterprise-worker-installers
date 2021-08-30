@@ -25,19 +25,29 @@ TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
 TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
 QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
 EOM
+
+TRAVIS_WORKER_STARTUP_FILE_PATH="/root/travis.sh"
+
+cat >> $TRAVIS_WORKER_STARTUP_FILE_PATH<<- EOM
+#!/bin/bash
+/snap/bin/travis-worker |& tee /root/travis-worker.log
+EOM
+
+echo "Adding an entry to crontable to run travis-worker on system boot"
+cat <(crontab -l) <(echo "@reboot $TRAVIS_WORKER_STARTUP_FILE_PATH") | crontab -
 }
 
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
 
-declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=( ["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
+declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
                                                   ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
                                                   ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
                                                   ["s390x-bionic"]="ubuntu-18.04-full-1591342433.tar.gz"
                                                   ["arm64-focal"]="ubuntu-20.04-full-1604305461.tar.gz"
                                                   ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
                                                   ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
-                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz" )
+                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
 
 
 
@@ -65,17 +75,32 @@ while [ $# -gt 0 ]; do
       ;;
     --travis_build_images_arch=*)
       TRAVIS_BUILD_IMAGES_ARCH="${1#*=}"
+      ;;
+    --travis_storage_for_instances=*)
+      TRAVIS_STORAGE_FOR_INSTANCES="${1#*=}"
+      ;;
+    --travis_storage_for_data=*)
+      TRAVIS_STORAGE_FOR_DATA="${1#*=}"
+      ;;
+    --travis_network_ipv4_address=*)
+      TRAVIS_NETWORK_IPV4_ADDRESS="${1#*=}"
+      ;;
+    --travis_network_ipv6_address=*)
+      TRAVIS_NETWORK_IPV6_ADDRESS="${1#*=}"
+      ;;
   esac
   shift
 done
 
 # travis-worker config
-#TRAVIS_ENTERPRISE_SECURITY_TOKEN="H3Tve2EbLECL2u3VQ_9qkSE5OhTD8fsSBaxD6Fne1SHcxha93E2_gwsBe7W7yc_1"
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterprise.com
 TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}"
 TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
 TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
+TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
+TRAVIS_NETWORK_IPV6_ADDRESS="${TRAVIS_NETWORK_IPV6_ADDRESS:-none}"
+
 
 if [[ ! -v TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
  echo 'please set travis_enterprise_security_token'
@@ -91,7 +116,7 @@ echo "Updating the OS"
 apt-get update
 
 echo "Installing tools"
-apt-get install zfsutils-linux curl -y
+apt-get install zfsutils-linux curl cron -y
 export PATH=/snap/bin/:${PATH}
 
 echo "Installing and setting up LXD"
@@ -106,21 +131,24 @@ snap connect travis-worker:lxd lxd:lxd
 configure_travis_worker
 
 
+if [[ ! -v TRAVIS_STORAGE_FOR_DATA ]]; then
+  echo "Creating a directory for data"
+  mkdir -p /mnt/data
+else
+  echo "Creating a partition for data"
+  mkfs.ext4 -F $TRAVIS_STORAGE_FOR_DATA
+  mkdir -p /mnt/data
+  echo "$TRAVIS_STORAGE_FOR_DATA /mnt/data ext4 errors=remount-ro 0 0" >> /etc/fstab
+  mount -a 2>/dev/null
+  rm -rf /mnt/data/*
+fi
 
-#mkfs
-echo "Creating partition for data"
-mkfs.ext4 -F /dev/nvme0n1p5
-mkdir -p /mnt/data
-echo "/dev/nvme0n1p5 /mnt/data ext4 errors=remount-ro 0 0" >> /etc/fstab
-mount -a 2>/dev/null
-rm -rf /mnt/data/*
-
-echo "Creating lxc storage for data"
+echo "Creating a lxc storage for data"
 lxc storage create data dir source=/mnt/data
 
 # downloading the image
 echo "downloading the image"
-image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP}[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]"
+image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]}"
 if test -f $image_file; then
   echo 'nothing to do - the image is already downloaded'
 else
@@ -129,16 +157,21 @@ fi
 
 # installing the image and set lxc config
 echo "Creating lxc storage for instances"
-lxc storage create instances zfs source=/dev/nvme0n1p4 volume.zfs.use_refquota=true
-zfs set sync=disabled instances
-zfs set atime=off instances
+if [[ ! -v TRAVIS_STORAGE_FOR_INSTANCES ]]; then
+  mkdir -p /mnt/instances
+  lxc storage create instances dir source=/mnt/instances
+else
+  lxc storage create instances zfs source=$TRAVIS_STORAGE_FOR_INSTANCES volume.zfs.use_refquota=true
+  zfs set sync=disabled instances
+  zfs set atime=off instances
+fi
 
 echo "configuring lxc network"
-lxc network create lxdbr0 dns.mode=none ipv4.address=192.168.0.1/24 ipv4.dhcp=false ipv4.firewall=false
+lxc network create lxdbr0 dns.mode=none ipv4.address=$TRAVIS_NETWORK_IPV4_ADDRESS ipv4.dhcp=false ipv4.firewall=false
 ipv6disabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
 if [ "$ipv6disabled" == 0 ]; then # ipv6 not disabled
   lxc network set lxdbr0 ipv6.dhcp true
-  lxc network set lxdbr0 ipv6.address 2001:db8::1/64
+  lxc network set lxdbr0 ipv6.address $TRAVIS_NETWORK_IPV6_ADDRESS
   lxc network set lxdbr0 ipv6.nat true
 else
   lxc network set lxdbr0 ipv6.address none
