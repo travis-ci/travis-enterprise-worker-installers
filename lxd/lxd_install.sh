@@ -35,11 +35,12 @@ EOM
 
 echo "Adding an entry to crontable to run travis-worker on system boot"
 cat <(crontab -l) <(echo "@reboot $TRAVIS_WORKER_STARTUP_FILE_PATH") | crontab -
+
+chmod +x $TRAVIS_WORKER_STARTUP_FILE_PATH
 }
 
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
-
 declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
                                                   ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
                                                   ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
@@ -48,8 +49,6 @@ declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubun
                                                   ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
                                                   ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
                                                   ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
-
-
 
 # variables
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
@@ -92,7 +91,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# travis-worker config
+# travis-worker and lxd instance config
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterprise.com
 TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}"
 TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME:-builds.bionic}"
@@ -100,7 +99,6 @@ TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
 TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
 TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
 TRAVIS_NETWORK_IPV6_ADDRESS="${TRAVIS_NETWORK_IPV6_ADDRESS:-none}"
-
 
 if [[ ! -v TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
  echo 'please set travis_enterprise_security_token'
@@ -129,7 +127,6 @@ echo "Installing travis worker binary"
 snap install travis-worker --edge
 snap connect travis-worker:lxd lxd:lxd
 configure_travis_worker
-
 
 if [[ ! -v TRAVIS_STORAGE_FOR_DATA ]]; then
   echo "Creating a directory for data"
@@ -179,11 +176,9 @@ fi
 lxc profile device add default eth0 nic nictype=bridged parent=lxdbr0 security.mac_filtering=true
 lxc profile device add default root disk path=/ pool=instances
 
-
 echo "Importing and starting image"
 lxc image import $image_file --alias travis-image
 lxc launch travis-image default
-
 
 # Force reboot
 echo "Rebooting the machine"
