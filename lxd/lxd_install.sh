@@ -39,20 +39,22 @@ cat <(crontab -l) <(echo "@reboot $TRAVIS_WORKER_STARTUP_FILE_PATH") | crontab -
 chmod +x $TRAVIS_WORKER_STARTUP_FILE_PATH
 }
 
-# consts
-TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
-declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
-                                                  ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
-                                                  ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
-                                                  ["s390x-bionic"]="ubuntu-18.04-full-1591342433.tar.gz"
-                                                  ["arm64-focal"]="ubuntu-20.04-full-1604305461.tar.gz"
-                                                  ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
-                                                  ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
-                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
-
-# variables
-TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
-TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
+help_me() {
+      printf "**************************************************************\\n"
+      printf "* Error: Invalid argument.                                   *\\n"
+      printf "* Valid Arguments are:                                       *\\n"
+      printf "*  --travis_enterprise_security_token= REQUIRED - a string   *\\n"
+      printf "*  --travis_enterprise_host= REQUIRED - i.e. ext-dev.travis-ci-enterprise.com *\\n"
+      printf "*  --travis_queue_name= default is \"builds.bionic\"           *\\n"
+      printf "*  --travis_build_images= default is \"focal\". Allowed values are: [\"focal\", \"bionic\"] *\\n"
+      printf "*  --travis_enterprise_build_endpoint= default is \"__build__\"           *\\n"
+      printf "*  --travis_build_images_arch= default is \"amd64\". Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"] *\\n"
+      printf "*  --travis_storage_for_instances= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4  *\\n"
+      printf "*  --travis_storage_for_data= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4          *\\n"
+      printf "*  --travis_network_ipv4_address= a value used for a lxc container. Default is 192.168.0.1 *\\n"
+      printf "*  --travis_network_ipv6_address= a value used for a lxc container. Default is none. Takes effect if ipv6 is enabled on all interfaces on the host. *\\n"
+      printf "**************************************************************\\n"
+}
 
 # reading from script's arguments
 while [ $# -gt 0 ]; do
@@ -87,9 +89,42 @@ while [ $# -gt 0 ]; do
     --travis_network_ipv6_address=*)
       TRAVIS_NETWORK_IPV6_ADDRESS="${1#*=}"
       ;;
+      *)
+      help_me
+      exit 1
   esac
   shift
 done
+
+if [[ ! -v TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
+ help_me
+ exit 1
+fi
+
+if [[ ! -v TRAVIS_ENTERPRISE_HOST ]]; then
+ help_me
+ exit 1
+fi
+
+
+
+
+# consts
+TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
+declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
+                                                  ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
+                                                  ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
+                                                  ["s390x-bionic"]="ubuntu-18.04-full-1591342433.tar.gz"
+                                                  ["arm64-focal"]="ubuntu-20.04-full-1604305461.tar.gz"
+                                                  ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
+                                                  ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
+                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
+
+# variables
+TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
+TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
+
+echo $TRAVIS_BUILD_IMAGES_ARCH
 
 # travis-worker and lxd instance config
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterprise.com
@@ -100,22 +135,22 @@ TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
 TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
 TRAVIS_NETWORK_IPV6_ADDRESS="${TRAVIS_NETWORK_IPV6_ADDRESS:-none}"
 
-if [[ ! -v TRAVIS_ENTERPRISE_SECURITY_TOKEN ]]; then
- echo 'please set travis_enterprise_security_token'
- exit 1
-fi
-
-if [[ ! -v TRAVIS_ENTERPRISE_HOST ]]; then
- echo 'please set travis_enterprise_host'
- exit 1
-fi
-
 echo "Updating the OS"
 apt-get update
 
 echo "Installing tools"
 apt-get install zfsutils-linux curl cron -y
 export PATH=/snap/bin/:${PATH}
+
+# downloading the image
+echo "downloading the image"
+image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]}"
+
+if test -f $image_file; then
+  echo 'nothing to do - the image is already downloaded'
+else
+  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output $image_file
+fi
 
 echo "Installing and setting up LXD"
 apt-get remove --purge --yes lxd lxd-client liblxc1 lxcfs
@@ -142,15 +177,6 @@ fi
 
 echo "Creating a lxc storage for data"
 lxc storage create data dir source=/mnt/data
-
-# downloading the image
-echo "downloading the image"
-image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]}"
-if test -f $image_file; then
-  echo 'nothing to do - the image is already downloaded'
-else
-  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output $image_file
-fi
 
 # installing the image and set lxc config
 echo "Creating lxc storage for instances"
