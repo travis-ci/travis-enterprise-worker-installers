@@ -3,40 +3,46 @@ set -eux
 
 # functions
 configure_travis_worker() {
-TRAVIS_WORKER_CONFIG_FILE_PATH="/etc/environment"
+TRAVIS_WORKER_CONFIG_FILE_PATH="/var/snap/travis-worker/common/worker.env"
 
 cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
-TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
-TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
-TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
-TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
-TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
-BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
-TRAVIS_WORKER_DOCKER_NATIVE="true"
-AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
-TRAVIS_WORKER_DOCKER_NATIVE="true"
-TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'
-POOL_SIZE='2'
-PROVIDER_NAME='docker'
-TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'
-SILENCE_METRICS="true"
-TRAVIS_WORKER_DOCKER_BINDS="/sys/fs/cgroup:/sys/fs/cgroup"
-TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
-TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
-QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+export TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
+export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
+export TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
+export TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+export TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
+export BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
+export TRAVIS_WORKER_DOCKER_NATIVE="true"
+export AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
+export TRAVIS_WORKER_DOCKER_NATIVE="true"
+export TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'
+export POOL_SIZE='2'
+export PROVIDER_NAME='docker'
+export TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'
+export SILENCE_METRICS="true"
+export TRAVIS_WORKER_DOCKER_BINDS="/sys/fs/cgroup:/sys/fs/cgroup"
+export TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
+export TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
+export QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
 EOM
 
-TRAVIS_WORKER_STARTUP_FILE_PATH="/root/travis.sh"
+TRAVIS_WORKER_STARTUP_FILE_PATH="/etc/systemd/system/travis-worker.service"
 
 cat >> $TRAVIS_WORKER_STARTUP_FILE_PATH<<- EOM
-#!/bin/bash
-/snap/bin/travis-worker |& tee /root/travis-worker.log
+[Unit]
+Launches travis-worker on the system's startup
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /snap/bin/travis-worker
+
+[Install]
+WantedBy=multi-user.target
 EOM
 
-echo "Adding an entry to crontable to run travis-worker on system boot"
-cat <(crontab -l) <(echo "@reboot $TRAVIS_WORKER_STARTUP_FILE_PATH") | crontab -
-
-chmod +x $TRAVIS_WORKER_STARTUP_FILE_PATH
+echo "Enabling travis-worker for systemctl"
+chmod 644 $TRAVIS_WORKER_STARTUP_FILE_PATH
+systemctl enable travis-worker.service
 }
 
 help_me() {
@@ -51,7 +57,7 @@ help_me() {
       printf "*  --travis_build_images_arch= default is \"amd64\". Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"] *\\n"
       printf "*  --travis_storage_for_instances= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4  *\\n"
       printf "*  --travis_storage_for_data= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4          *\\n"
-      printf "*  --travis_network_ipv4_address= a value used for a lxc container. Default is 192.168.0.1 *\\n"
+      printf "*  --travis_network_ipv4_address= a value used for a lxc container. Default is 192.168.0.1/24 *\\n"
       printf "*  --travis_network_ipv6_address= a value used for a lxc container. Default is none. Takes effect if ipv6 is enabled on all interfaces on the host. *\\n"
       printf "**************************************************************\\n"
 }
