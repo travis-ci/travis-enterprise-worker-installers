@@ -9,21 +9,24 @@ cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
 export TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
 export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
 export TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
-export TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+export TRAVIS_WORKER_QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME}"
 export TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
 export BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
-export TRAVIS_WORKER_DOCKER_NATIVE="true"
 export AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
-export TRAVIS_WORKER_DOCKER_NATIVE="true"
 export TRAVIS_WORKER_BUILD_API_INSECURE_SKIP_VERIFY='true'
-export POOL_SIZE='2'
-export PROVIDER_NAME='docker'
-export TRAVIS_WORKER_DOCKER_ENDPOINT='unix:///var/run/docker.sock'
+export POOL_SIZE='40'
+export PROVIDER_NAME='lxd'
+export TRAVIS_WORKER_PROVIDER_NAME=lxd
 export SILENCE_METRICS="true"
-export TRAVIS_WORKER_DOCKER_BINDS="/sys/fs/cgroup:/sys/fs/cgroup"
-export TRAVIS_WORKER_DOCKER_SECURITY_OPT="seccomp=unconfined"
-export TRAVIS_WORKER_DOCKER_TMPFS_MAP="/run:rw,nosuid,nodev,exec,noatime,size=65536k+/run/lock:rw,nosuid,nodev,exec,noatime,size=65536k"
-export QUEUE_NAME="${TRAVIS_QUEUE_NAME}"
+export QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME}"
+export TRAVIS_WORKER_LXD_CPUS=2
+export TRAVIS_WORKER_LXD_CPUS_BURST=true
+export TRAVIS_WORKER_LXD_DOCKER_POOL=data
+export TRAVIS_WORKER_LXD_IMAGE=travis-image
+export TRAVIS_WORKER_LXD_NETWORK=1Gbit
+export TRAVIS_WORKER_LXD_NETWORK_STATIC=true
+export TRAVIS_WORKER_LXD_NETWORK_DNS=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
+export TRAVIS_WORKER_LXD_DISK=20GB
 EOM
 
 TRAVIS_WORKER_STARTUP_FILE_PATH="/etc/systemd/system/travis-worker.service"
@@ -51,7 +54,7 @@ help_me() {
       printf "* Valid Arguments are:                                       *\\n"
       printf "*  --travis_enterprise_security_token= REQUIRED - a string   *\\n"
       printf "*  --travis_enterprise_host= REQUIRED - i.e. ext-dev.travis-ci-enterprise.com *\\n"
-      printf "*  --travis_queue_name= default is \"builds.bionic\"           *\\n"
+      printf "*  --travis_worker_queue_name= default is \"builds.bionic\"           *\\n"
       printf "*  --travis_build_images= default is \"focal\". Allowed values are: [\"focal\", \"bionic\"] *\\n"
       printf "*  --travis_enterprise_build_endpoint= default is \"__build__\"           *\\n"
       printf "*  --travis_build_images_arch= default is \"amd64\". Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"] *\\n"
@@ -71,8 +74,8 @@ while [ $# -gt 0 ]; do
     --travis_enterprise_build_endpoint=*)
       TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${1#*=}"
       ;;
-    --travis_queue_name=*)
-      TRAVIS_QUEUE_NAME="${1#*=}"
+    --travis_worker_queue_name=*)
+      TRAVIS_worker_QUEUE_NAME="${1#*=}"
       ;;
     --travis_build_images=*)
       TRAVIS_BUILD_IMAGES="${1#*=}"
@@ -133,9 +136,9 @@ TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
 echo $TRAVIS_BUILD_IMAGES_ARCH
 
 # travis-worker and lxd instance config
-TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}" # ext-dev.travis-ci-enterprise.com
+TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
 TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}"
-TRAVIS_QUEUE_NAME="${TRAVIS_QUEUE_NAME:-builds.bionic}"
+TRAVIS_WORKER_QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
 TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
 TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
