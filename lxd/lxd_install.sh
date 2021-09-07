@@ -5,7 +5,7 @@ set -eux
 configure_travis_worker() {
 TRAVIS_WORKER_CONFIG_FILE_PATH="/var/snap/travis-worker/common/worker.env"
 
-cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
+sudo -i -u ubuntu sudo cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
 export TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
 export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
 export TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
@@ -27,6 +27,7 @@ export TRAVIS_WORKER_LXD_NETWORK=1Gbit
 export TRAVIS_WORKER_LXD_NETWORK_STATIC=true
 export TRAVIS_WORKER_LXD_NETWORK_DNS=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
 export TRAVIS_WORKER_LXD_DISK=20GB
+export NETWORK_IPV6_FILTERING=true
 EOM
 
 TRAVIS_WORKER_STARTUP_FILE_PATH="/etc/systemd/system/travis-worker.service"
@@ -37,14 +38,14 @@ Launches travis-worker on the system's startup
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /snap/bin/travis-worker
+ExecStart=/snap/bin/lxd sql global "DELETE from storage_volumes where name like '%-docker'" && /snap/bin/travis-worker
 
 [Install]
 WantedBy=multi-user.target
 EOM
 
 echo "Enabling travis-worker for systemctl"
-chmod 644 $TRAVIS_WORKER_STARTUP_FILE_PATH
+sudo -i -u ubuntu sudo chmod 644 $TRAVIS_WORKER_STARTUP_FILE_PATH
 systemctl enable travis-worker.service
 }
 
@@ -163,13 +164,17 @@ fi
 
 echo "Installing and setting up LXD"
 apt-get remove --purge --yes lxd lxd-client liblxc1 lxcfs
-snap install lxd
-snap set lxd shiftfs.enable=true
+sudo -i -u ubuntu sudo snap install lxd
+sudo -i -u ubuntu sudo snap set lxd shiftfs.enable=true
 
 # install travis worker binary
 echo "Installing travis worker binary"
-snap install travis-worker --edge
-snap connect travis-worker:lxd lxd:lxd
+sudo -i -u ubuntu sudo snap install travis-worker --edge
+sudo -i -u ubuntu sudo snap connect travis-worker:lxd lxd:lxd
+ipv6disabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
+if [ "$ipv6disabled" == 0 ]; then
+  NETWORK_IPV6_FILTERING="true"
+fi
 configure_travis_worker
 
 if [[ ! -v TRAVIS_STORAGE_FOR_DATA ]]; then
@@ -200,8 +205,16 @@ fi
 
 echo "configuring lxc network"
 lxc network create lxdbr0 dns.mode=none ipv4.address=$TRAVIS_NETWORK_IPV4_ADDRESS ipv4.dhcp=false ipv4.firewall=false
-ipv6disabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
-if [ "$ipv6disabled" == 0 ]; then # ipv6 not disabled
+if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then # ipv6 not disabled
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  iptables -t nat -A POSTROUTING -s 192.168.0.0/24 ! -d 192.168.0.0/24 -j MASQUERADE
+  iptables -I FORWARD -s 192.168.0.0/24 -d 192.168.0.0/24 -j REJECT
+  iptables -I INPUT -s 192.168.0.0/24 -j REJECT
+  iptables -I INPUT -p udp -m udp -d 192.168.0.0/24 --dport 53 -j ACCEPT
+  iptables -I INPUT -p udp -m udp -s 192.168.0.0/24 --sport 53 -j ACCEPT
+  modprobe br_netfilter
+  echo br_netfilter > /etc/modules-load.d/br_netfilter.conf
+  echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
   lxc network set lxdbr0 ipv6.dhcp true
   lxc network set lxdbr0 ipv6.address $TRAVIS_NETWORK_IPV6_ADDRESS
   lxc network set lxdbr0 ipv6.nat true
