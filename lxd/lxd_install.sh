@@ -27,8 +27,8 @@ export TRAVIS_WORKER_LXD_NETWORK=1Gbit
 export TRAVIS_WORKER_LXD_NETWORK_STATIC=true
 export TRAVIS_WORKER_LXD_NETWORK_DNS=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
 export TRAVIS_WORKER_LXD_DISK=20GB
-export TRAVIS_WORKER_DEBUG=true
-export EXEC_CMD="chmod 700 /home/travis/build.sh && ls -la /home/travis/build.sh && bash /home/travis/build.sh"
+export TRAVIS_WORKER_LXD_EXEC_CMD="sudo bash /home/travis/build.sh"
+export TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING=${TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING}
 EOM
 
 TRAVIS_WORKER_STARTUP_FILE_PATH="/etc/systemd/system/travis-worker.service"
@@ -77,7 +77,7 @@ while [ $# -gt 0 ]; do
       TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${1#*=}"
       ;;
     --travis_worker_queue_name=*)
-      TRAVIS_worker_QUEUE_NAME="${1#*=}"
+      TRAVIS_WORKER_QUEUE_NAME="${1#*=}"
       ;;
     --travis_build_images=*)
       TRAVIS_BUILD_IMAGES="${1#*=}"
@@ -166,10 +166,10 @@ export PATH=/snap/bin/:${PATH}
 echo "downloading the image"
 image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]}"
 
-if test -f $image_file; then
+if test -f "$image_file"; then
   echo 'nothing to do - the image is already downloaded'
 else
-  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output $image_file
+  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output "$image_file"
 fi
 
 echo "Installing and setting up LXD"
@@ -181,7 +181,11 @@ snap set lxd shiftfs.enable=true
 echo "Installing travis worker binary"
 snap install travis-worker --edge
 snap connect travis-worker:lxd lxd:lxd
-ipv6disabled=$(sysctl -a 2>/dev/null | grep "disable_ipv6 = 1" | wc -l)
+if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then
+  TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING="true"
+else
+  TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING="false"
+fi
 configure_travis_worker
 
 if [[ ! -v TRAVIS_STORAGE_FOR_DATA ]]; then
@@ -189,7 +193,7 @@ if [[ ! -v TRAVIS_STORAGE_FOR_DATA ]]; then
   mkdir -p /mnt/data
 else
   echo "Creating a partition for data"
-  mkfs.ext4 -F $TRAVIS_STORAGE_FOR_DATA
+  mkfs.ext4 -F "$TRAVIS_STORAGE_FOR_DATA"
   mkdir -p /mnt/data
   echo "$TRAVIS_STORAGE_FOR_DATA /mnt/data ext4 errors=remount-ro 0 0" >> /etc/fstab
   mount -a 2>/dev/null
@@ -205,7 +209,7 @@ if [[ ! -v TRAVIS_STORAGE_FOR_INSTANCES ]]; then
   mkdir -p /mnt/instances
   lxc storage create instances dir source=/mnt/instances
 else
-  lxc storage create instances zfs source=$TRAVIS_STORAGE_FOR_INSTANCES volume.zfs.use_refquota=true
+  lxc storage create instances zfs source="$TRAVIS_STORAGE_FOR_INSTANCES" volume.zfs.use_refquota=true
   zfs set sync=disabled instances
   zfs set atime=off instances
 fi
@@ -215,10 +219,11 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 modprobe br_netfilter
 echo br_netfilter > /etc/modules-load.d/br_netfilter.conf
 echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
-lxc network create lxdbr0 dns.mode=none ipv4.address=$TRAVIS_NETWORK_IPV4_ADDRESS ipv4.dhcp=false ipv4.firewall=false
-if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then # ipv6 not disabled
+echo 1 > /proc/sys/net/bridge/bridge-nf-call-ip6tables
+lxc network create lxdbr0 dns.mode=none ipv4.address="$TRAVIS_NETWORK_IPV4_ADDRESS" ipv4.dhcp=false ipv4.firewall=false
+if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then
   lxc network set lxdbr0 ipv6.dhcp true
-  lxc network set lxdbr0 ipv6.address $TRAVIS_NETWORK_IPV6_ADDRESS
+  lxc network set lxdbr0 ipv6.address "$TRAVIS_NETWORK_IPV6_ADDRESS"
   lxc network set lxdbr0 ipv6.nat true
 else
   lxc network set lxdbr0 ipv6.address none
@@ -227,7 +232,7 @@ lxc profile device add default eth0 nic nictype=bridged parent=lxdbr0 security.m
 lxc profile device add default root disk path=/ pool=instances
 
 echo "Importing and starting image"
-lxc image import $image_file --alias travis-image
+lxc image import "$image_file" --alias travis-image
 lxc launch travis-image default
 
 # Force reboot
