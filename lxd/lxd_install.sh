@@ -39,7 +39,7 @@ Launches travis-worker on the system's startup
 
 [Service]
 Type=simple
-ExecStart=/snap/bin/lxd sql global "DELETE from storage_volumes where name like '%-docker'" && /snap/bin/travis-worker
+ExecStart=/snap/bin/travis-worker
 
 [Install]
 WantedBy=multi-user.target
@@ -63,7 +63,7 @@ help_me() {
       printf "*  --travis_storage_for_instances= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4  *\\n"
       printf "*  --travis_storage_for_data= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4          *\\n"
       printf "*  --travis_network_ipv4_address= a value used for a lxc container. Default is 192.168.0.1/24 *\\n"
-      printf "*  --travis_network_ipv6_address= a value used for a lxc container. Default is none. Takes effect if ipv6 is enabled on all interfaces on the host. *\\n"
+      printf "*  --travis_network_ipv6_address= a value used for a lxc container. Default is none. *\\n"
       printf "**************************************************************\\n"
 }
 
@@ -117,9 +117,6 @@ if [[ ! -v TRAVIS_ENTERPRISE_HOST ]]; then
  exit 1
 fi
 
-
-
-
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
 declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
@@ -134,8 +131,6 @@ declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubun
 # variables
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
-
-echo $TRAVIS_BUILD_IMAGES_ARCH
 
 # travis-worker and lxd instance config
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
@@ -220,7 +215,9 @@ modprobe br_netfilter
 echo br_netfilter > /etc/modules-load.d/br_netfilter.conf
 echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
 echo 1 > /proc/sys/net/bridge/bridge-nf-call-ip6tables
+
 lxc network create lxdbr0 dns.mode=none ipv4.address="$TRAVIS_NETWORK_IPV4_ADDRESS" ipv4.dhcp=false ipv4.firewall=false
+
 if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then
   lxc network set lxdbr0 ipv6.dhcp true
   lxc network set lxdbr0 ipv6.address "$TRAVIS_NETWORK_IPV6_ADDRESS"
@@ -228,6 +225,7 @@ if [[ -v TRAVIS_NETWORK_IPV6_ADDRESS ]]; then
 else
   lxc network set lxdbr0 ipv6.address none
 fi
+
 lxc profile device add default eth0 nic nictype=bridged parent=lxdbr0 security.mac_filtering=true
 lxc profile device add default root disk path=/ pool=instances
 
