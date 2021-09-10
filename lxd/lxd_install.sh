@@ -28,14 +28,14 @@ export TRAVIS_WORKER_LXD_NETWORK_STATIC=true
 export TRAVIS_WORKER_LXD_NETWORK_DNS=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
 export TRAVIS_WORKER_LXD_DISK=20GB
 export TRAVIS_WORKER_LXD_EXEC_CMD="sudo bash /home/travis/build.sh"
-export TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING=${TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING}
+export TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING="${TRAVIS_WORKER_LXD_NETWORK_IPV6_FILTERING}"
 EOM
 
 TRAVIS_WORKER_STARTUP_FILE_PATH="/etc/systemd/system/travis-worker.service"
 
-cat >> $TRAVIS_WORKER_STARTUP_FILE_PATH<<- EOM
+cat > $TRAVIS_WORKER_STARTUP_FILE_PATH<<- EOM
 [Unit]
-Launches travis-worker on the system's startup
+Description=Launches travis-worker on the system's startup
 
 [Service]
 Type=simple
@@ -164,7 +164,7 @@ image_file="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR}/${TRAVIS_LXD_INSTALL_SCRIPT_I
 if test -f "$image_file"; then
   echo 'nothing to do - the image is already downloaded'
 else
-  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE}" --output "$image_file"
+  curl "${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL}/${TRAVIS_BUILD_IMAGES_ARCH}/${TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP[${TRAVIS_BUILD_IMAGES_ARCH}-${TRAVIS_BUILD_IMAGES}]}" --output "$image_file"
 fi
 
 echo "Installing and setting up LXD"
