@@ -18,7 +18,7 @@ cat >> $TRAVIS_WORKER_CONFIG_FILE_PATH<<- EOM
 export TRAVIS_ENTERPRISE_SECURITY_TOKEN="${TRAVIS_ENTERPRISE_SECURITY_TOKEN}"
 export TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT}"
 export TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES}"
-export TRAVIS_WORKER_QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME}"
+export TRAVIS_WORKER_QUEUE_NAME="builds.${TRAVIS_BUILD_IMAGES}"
 export TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
 export BUILD_API_URI="https://${TRAVIS_ENTERPRISE_HOST:-localhost}/${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}/script"
 export AMQP_URI="amqp://travis:${TRAVIS_ENTERPRISE_SECURITY_TOKEN:-travis}@${TRAVIS_ENTERPRISE_HOST:-localhost}/travis"
@@ -65,12 +65,12 @@ help_me() {
       printf "* Valid Arguments are:                                                                                                                                 *\\n"
       printf "*  --travis_enterprise_security_token= REQUIRED - a string                                                                                             *\\n"
       printf "*  --travis_enterprise_host= REQUIRED - i.e. ext-dev.travis-ci-enterprise.com                                                                          *\\n"
-      printf "*  --travis_worker_queue_name= default is \"builds.bionic\"                                                                                              *\\n"
       printf "*  --travis_build_images= default is \"focal\". Allowed values are: [\"focal\", \"bionic\"]                                                                  *\\n"
       printf "*  --travis_enterprise_build_endpoint= default is \"__build__\"                                                                                          *\\n"
       printf "*  --travis_build_images_arch= default is \"amd64\". Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"]                                          *\\n"
       printf "*  --travis_storage_for_instances= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4  *\\n"
       printf "*  --travis_storage_for_data= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4       *\\n"
+      printf "*  --travis_network_ipv4_network= a value used for iptables. Default is 192.168.0.0/24                                                                 *\\n"
       printf "*  --travis_network_ipv4_address= a value used for a lxc container. Default is 192.168.0.1/24                                                          *\\n"
       printf "*  --travis_network_ipv6_address= a value used for a lxc container. Default is none.                                                                   *\\n"
       printf "********************************************************************************************************************************************************\\n"
@@ -87,9 +87,6 @@ while [ $# -gt 0 ]; do
     --travis_enterprise_build_endpoint=*)
       TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${1#*=}"
       ;;
-    --travis_worker_queue_name=*)
-      TRAVIS_WORKER_QUEUE_NAME="${1#*=}"
-      ;;
     --travis_build_images=*)
       TRAVIS_BUILD_IMAGES="${1#*=}"
       ;;
@@ -104,6 +101,9 @@ while [ $# -gt 0 ]; do
       ;;
     --travis_storage_for_data=*)
       TRAVIS_STORAGE_FOR_DATA="${1#*=}"
+      ;;
+    --travis_network_ipv4_network=*)
+      TRAVIS_NETWORK_IPV4_NETWORK="${1#*=}"
       ;;
     --travis_network_ipv4_address=*)
       TRAVIS_NETWORK_IPV4_ADDRESS="${1#*=}"
@@ -149,6 +149,7 @@ TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}
 TRAVIS_WORKER_QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
 TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
+TRAVIS_NETWORK_IPV4_NETWORK="${TRAVIS_NETWORK_IPV4_NETWORK:-192.168.0.0/24}"
 TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
 TRAVIS_WORKER_LXD_IMAGE=travis-worker
 
@@ -156,11 +157,11 @@ echo "Updating the OS"
 apt-get update
 
 echo "Setting iptables"
-iptables -t nat -A POSTROUTING -s 192.168.0.0/24 ! -d 192.168.0.0/24 -j MASQUERADE
-iptables -I FORWARD -s 192.168.0.0/24 -d 192.168.0.0/24 -j REJECT
-iptables -I INPUT -s 192.168.0.0/24 -j REJECT
-iptables -I INPUT -p udp -m udp -d 192.168.0.0/24 --dport 53 -j ACCEPT
-iptables -I INPUT -p udp -m udp -s 192.168.0.0/24 --sport 53 -j ACCEPT
+iptables -t nat -A POSTROUTING -s "${TRAVIS_NETWORK_IPV4_NETWORK}" ! -d "${TRAVIS_NETWORK_IPV4_NETWORK}" -j MASQUERADE
+iptables -I FORWARD -s "${TRAVIS_NETWORK_IPV4_NETWORK}" -d "${TRAVIS_NETWORK_IPV4_NETWORK}" -j REJECT
+iptables -I INPUT -s "${TRAVIS_NETWORK_IPV4_NETWORK}" -j REJECT
+iptables -I INPUT -p udp -m udp -d "${TRAVIS_NETWORK_IPV4_NETWORK}" --dport 53 -j ACCEPT
+iptables -I INPUT -p udp -m udp -s "${TRAVIS_NETWORK_IPV4_NETWORK}" --sport 53 -j ACCEPT
 
 # "clicking" yes during iptables-persistent installation
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
