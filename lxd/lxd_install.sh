@@ -64,10 +64,10 @@ help_me() {
       printf "* Error: Invalid argument.                                                                                                                             *\\n"
       printf "* Valid Arguments are:                                                                                                                                 *\\n"
       printf "*  --travis_enterprise_security_token= REQUIRED - a string                                                                                             *\\n"
+      printf "*  --travis_build_images_arch= REQUIRED. Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"]                                                    *\\n"
       printf "*  --travis_enterprise_host= REQUIRED - i.e. ext-dev.travis-ci-enterprise.com                                                                          *\\n"
       printf "*  --travis_build_images= default is \"focal\". Allowed values are: [\"focal\", \"bionic\"]                                                                  *\\n"
       printf "*  --travis_enterprise_build_endpoint= default is \"__build__\"                                                                                          *\\n"
-      printf "*  --travis_build_images_arch= default is \"amd64\". Allowed values are: [\"amd64\", \"s390x\", \"arm64\", \"ppc64le\"]                                          *\\n"
       printf "*  --travis_storage_for_instances= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4  *\\n"
       printf "*  --travis_storage_for_data= default is blank. If blank it uses the default host storage. You can define your storage typing i.e. /dev/nvm0n1p4       *\\n"
       printf "*  --travis_network_ipv4_network= a value used for iptables. Default is 192.168.0.0/24                                                                 *\\n"
@@ -128,6 +128,11 @@ if [[ ! -v TRAVIS_ENTERPRISE_HOST ]]; then
  exit 1
 fi
 
+if [[ ! -v TRAVIS_BUILD_IMAGES_ARCH ]]; then
+ help_me
+ exit 1
+fi
+
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
 declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
@@ -140,15 +145,12 @@ declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubun
                                                   ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
 
 # variables
-TRAVIS_LXD_INSTALL_SCRIPT_IMAGE="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE:-travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz}"
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
 
 # travis-worker and lxd instance config
 TRAVIS_ENTERPRISE_HOST="${TRAVIS_ENTERPRISE_HOST}"
 TRAVIS_ENTERPRISE_BUILD_ENDPOINT="${TRAVIS_ENTERPRISE_BUILD_ENDPOINT:-__build__}"
-TRAVIS_WORKER_QUEUE_NAME="${TRAVIS_WORKER_QUEUE_NAME:-builds.bionic}"
 TRAVIS_BUILD_IMAGES="${TRAVIS_BUILD_IMAGES:-focal}"
-TRAVIS_BUILD_IMAGES_ARCH="${TRAVIS_BUILD_IMAGES_ARCH:-amd64}"
 TRAVIS_NETWORK_IPV4_NETWORK="${TRAVIS_NETWORK_IPV4_NETWORK:-192.168.0.0/24}"
 TRAVIS_NETWORK_IPV4_ADDRESS="${TRAVIS_NETWORK_IPV4_ADDRESS:-192.168.0.1/24}"
 TRAVIS_WORKER_LXD_IMAGE=travis-worker
