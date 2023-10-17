@@ -69,7 +69,7 @@ while [ $# -gt 0 ]; do
       printf "*  --travis_queue_name=\"builds.trusty\"                       *\\n"
       printf "*  --travis_beta_build_images=true (deprecated)              *\\n"
       printf "*  --travis_bionic_build_images=true (deprecated)            *\\n"
-      printf "*  --travis_build_images=[trusty, xenial, bionic]           *\\n"
+      printf "*  --travis_build_images=[trusty, xenial, bionic, focal]     *\\n"
       printf "*  --skip_docker_populate=true                               *\\n"
       printf "*  --airgap_directory=\"<directory>\"                          *\\n"
       printf "**************************************************************\\n"
@@ -130,7 +130,7 @@ if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
   fi
 else
   case "$TRAVIS_BUILD_IMAGES" in
-    trusty|xenial|bionic)
+    trusty|xenial|bionic|focal)
       export BUILD_IMAGES="$TRAVIS_BUILD_IMAGES"
       ;;
     *)
@@ -324,8 +324,8 @@ pull_trusty_build_images() {
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 (xenial) build images"
 
-  opal=travisci/ci-opal:packer-1564752277-0c06deb6
-  sardonyx=travisci/ci-sardonyx:packer-1564753982-0c06deb6
+  opal=travisci/ci-opal:packer-1596627727-fb48a890
+  sardonyx=travisci/ci-sardonyx:packer-1596621687-01d077a4
 
   docker pull $opal
   docker pull $sardonyx
@@ -351,22 +351,23 @@ pull_xenial_build_images() {
   done
 }
 
-pull_bionic_build_images() {
-  echo "Installing Ubuntu 18.04 (bionic) build images"
+pull_build_images() {
+  ubuntu_images=$1
+  image_name=$(echo "$ubuntu_images" | cut -d':' -f 1)
 
-  ubuntu1804=travisci/ci-ubuntu-1804:packer-1566551110-e45a2919
+  echo "Installing $image_name build images"
 
-  docker pull $ubuntu1804
+  docker pull "$ubuntu_images"
 
   declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
   declare -a other_language_mappings=('haskell' 'erlang' 'perl')
 
   for lang_map in "${most_common_language_mappings[@]}"; do
-    docker tag $ubuntu1804 travis:"$lang_map"
+    docker tag "$ubuntu_images" travis:"$lang_map"
   done
 
   for lang_map in "${other_language_mappings[@]}"; do
-    docker tag $ubuntu1804 travis:"$lang_map"
+    docker tag "$ubuntu_images" travis:"$lang_map"
   done
 
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
@@ -378,6 +379,8 @@ pull_bionic_build_images() {
     docker tag travis:"$lang" travis:"$map"
   done
 }
+
+
 
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
@@ -399,7 +402,7 @@ configure_travis_worker() {
     echo "export QUEUE_NAME='builds.trusty'" >> $TRAVIS_WORKER_CONFIG
   fi
 
-  if [[ $BUILD_IMAGES == 'bionic' ]]; then
+  if [[ $BUILD_IMAGES == 'bionic' || $BUILD_IMAGES == 'focal' ]]; then
     {
       echo "export TRAVIS_WORKER_DOCKER_BINDS=\"/sys/fs/cgroup:/sys/fs/cgroup\""
       echo "export TRAVIS_WORKER_DOCKER_SECURITY_OPT=\"seccomp=unconfined\""
@@ -425,7 +428,9 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
     if [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
     elif [[ $BUILD_IMAGES == 'bionic' ]]; then
-      pull_bionic_build_images
+      pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
+    elif [[ $BUILD_IMAGES == 'focal' ]]; then
+      pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
     else
       download_language_mapping
       pull_trusty_build_images
