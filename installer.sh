@@ -425,15 +425,32 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
 
 
   if [[ -z $SKIP_DOCKER_POPULATE ]]; then
-    if [[ $BUILD_IMAGES == 'xenial' ]]; then
+    if [[ $BUILD_IMAGES == 'trusty' ]]; then
+      download_language_mapping
+      pull_trusty_build_images
+    elif [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
     elif [[ $BUILD_IMAGES == 'bionic' ]]; then
       pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
     elif [[ $BUILD_IMAGES == 'focal' ]]; then
       pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
     else
-      download_language_mapping
-      pull_trusty_build_images
+      BUILD_IMAGES=$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)
+      if [[ $BUILD_IMAGES == 'trusty' ]]; then
+        download_language_mapping
+        pull_trusty_build_images
+      elif [[ $BUILD_IMAGES == 'xenial' ]]; then
+        pull_xenial_build_images
+      elif [[ $BUILD_IMAGES == 'bionic' ]]; then
+        pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
+      elif [[ $BUILD_IMAGES == 'focal' ]]; then
+        pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
+      else
+        echo "Could not determine the Ubuntu release codename. Are you using Ubuntu OS?"
+      fi
+    fi
+      
+      
     fi
   else
     echo "Skip populating build images"
