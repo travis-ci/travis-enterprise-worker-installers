@@ -449,9 +449,6 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
         echo "Could not determine the Ubuntu release codename. Are you using Ubuntu OS?"
       fi
     fi
-      
-      
-    fi
   else
     echo "Skip populating build images"
   fi
