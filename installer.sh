@@ -435,6 +435,7 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
     elif [[ $BUILD_IMAGES == 'focal' ]]; then
       pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
     else
+      # shellcheck source=/etc/os-release
       BUILD_IMAGES=$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)
       if [[ $BUILD_IMAGES == 'trusty' ]]; then
         download_language_mapping
