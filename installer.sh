@@ -187,18 +187,7 @@ install_packages() {
 
 ## Install and setup Docker
 install_docker() {
-  : "${DOCKER_CONFIG_FILE:=/etc/default/docker}"
-
-  if [[ ! -f $DOCKER_APT_FILE ]]; then
-    curl -fsSL 'https://download.docker.com/linux/ubuntu/gpg' | apt-key add -
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-  fi
-
-  apt-get update
-
-  if ! docker version &>/dev/null; then
-    apt-get install -y docker-ce=$DOCKER_VERSION
-  fi
+  curl https://get.docker.com | sh
 }
 
 setup_docker() {
