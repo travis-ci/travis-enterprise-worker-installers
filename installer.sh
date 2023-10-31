@@ -369,7 +369,21 @@ pull_build_images() {
   done
 }
 
-
+setup_build_images_pull() {
+  BUILD_IMAGES=$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)
+      if [[ $BUILD_IMAGES == 'trusty' ]]; then
+        download_language_mapping
+        pull_trusty_build_images
+      elif [[ $BUILD_IMAGES == 'xenial' ]]; then
+        pull_xenial_build_images
+      elif [[ $BUILD_IMAGES == 'bionic' ]]; then
+        pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
+      elif [[ $BUILD_IMAGES == 'focal' ]]; then
+        pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
+      else
+        echo "Could not determine the Ubuntu release codename. Are you using Ubuntu OS?"
+      fi
+}
 
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
@@ -455,7 +469,7 @@ else
   configure_travis_worker_service
   install_language_mapping_from_airgap
   install_docker_images_from_airgap
-  pull_trusty_build_images
+  setup_build_images_pull
   configure_travis_worker
 fi
 
