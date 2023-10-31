@@ -79,12 +79,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [[ -z $DOCKER_VERSION ]]; then
-  export DOCKER_VERSION="18.06.1~ce~3-0~ubuntu"
-else
-  export DOCKER_VERSION
-fi
-
 if [[ -z $DOCKER_STORAGE_DRIVER ]]; then
   export DOCKER_STORAGE_DRIVER="overlay2"
 else
@@ -97,37 +91,10 @@ else
   export TRAVIS_WORKER_VERSION
 fi
 
+ubuntu_flavor="$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)"
 if [[ -z $TRAVIS_BUILD_IMAGES ]]; then
-
-  if [[ -z $TRAVIS_BETA_BUILD_IMAGES ]]; then
-    export BUILD_IMAGES='trusty'
-  else
-    export BUILD_IMAGES='xenial'
-
-    # Xenial workers listen to the builds.xenial by defaul
-    # We only set that though if the user didn't specify a different queue name
-    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
-      export TRAVIS_QUEUE_NAME='builds.xenial'
-    fi
-  fi
-
-  if [[ -z $TRAVIS_BIONIC_BUILD_IMAGES ]]; then
-    export BUILD_IMAGES='trusty'
-  else
-    export BUILD_IMAGES='bionic'
-
-    # Bionic workers listen to the builds.bionic by default
-    # We only set that though if the user didn't specify a different queue name
-    if [[ -z $TRAVIS_QUEUE_NAME ]]; then
-      export TRAVIS_QUEUE_NAME='builds.bionic'
-    fi
-  fi
-
-  if [[ -z $TRAVIS_QUEUE_NAME ]]; then
-    export TRAVIS_QUEUE_NAME='builds.trusty'
-  else
-    export TRAVIS_QUEUE_NAME
-  fi
+  export BUILD_IMAGES="$ubuntu_flavor"
+  export TRAVIS_QUEUE_NAME="builds.$ubuntu_flavor"
 else
   case "$TRAVIS_BUILD_IMAGES" in
     trusty|xenial|bionic|focal)
@@ -155,6 +122,8 @@ root_check() {
   if [[ $(whoami) != "root" ]]; then
     echo "This should only be run as root"
     exit 1
+  else
+    sudo apt update
   fi
 }
 
@@ -187,13 +156,31 @@ install_packages() {
 
 ## Install and setup Docker
 install_docker() {
-  curl https://get.docker.com | sh
+  : "${DOCKER_CONFIG_FILE:=/etc/default/docker}"
+
+  if [[ ! -f $DOCKER_APT_FILE ]]; then
+    curl -fsSL 'https://download.docker.com/linux/ubuntu/gpg' | apt-key add -
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  fi
+
+  apt-get update
+
+  if ! docker version &>/dev/null; then
+    docker_version="$(sudo apt-cache madison docker-ce | awk 'NR==10{print $3}')"
+    if [[ -z $DOCKER_VERSION ]]; then
+      export DOCKER_VERSION="$docker_version"
+    else
+      export DOCKER_VERSION
+    fi
+    echo "Setting Up docker for Ubuntu $BUILD_IMAGES - Docker version $DOCKER_VERSION"
+    apt-get install -y docker-ce=$DOCKER_VERSION
+  fi
 }
 
 setup_docker() {
   jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
   systemctl restart docker
-  sleep 2 # a short pause to ensure the docker daemon starts
+  sleep 5 # a short pause to ensure the docker daemon starts
 }
 
 create_aux_tools_dir() {
@@ -369,21 +356,7 @@ pull_build_images() {
   done
 }
 
-setup_build_images_pull() {
-  BUILD_IMAGES=$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)
-      if [[ $BUILD_IMAGES == 'trusty' ]]; then
-        download_language_mapping
-        pull_trusty_build_images
-      elif [[ $BUILD_IMAGES == 'xenial' ]]; then
-        pull_xenial_build_images
-      elif [[ $BUILD_IMAGES == 'bionic' ]]; then
-        pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
-      elif [[ $BUILD_IMAGES == 'focal' ]]; then
-        pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
-      else
-        echo "Could not determine the Ubuntu release codename. Are you using Ubuntu OS?"
-      fi
-}
+
 
 configure_travis_worker() {
   TRAVIS_WORKER_CONFIG="/etc/default/travis-worker"
@@ -428,30 +401,15 @@ if [[ -z "$AIRGAP_DIRECTORY" ]]; then
 
 
   if [[ -z $SKIP_DOCKER_POPULATE ]]; then
-    if [[ $BUILD_IMAGES == 'trusty' ]]; then
-      download_language_mapping
-      pull_trusty_build_images
-    elif [[ $BUILD_IMAGES == 'xenial' ]]; then
+    if [[ $BUILD_IMAGES == 'xenial' ]]; then
       pull_xenial_build_images
     elif [[ $BUILD_IMAGES == 'bionic' ]]; then
       pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
     elif [[ $BUILD_IMAGES == 'focal' ]]; then
       pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
     else
-      # shellcheck source=/etc/os-release
-      BUILD_IMAGES=$(. /etc/os-release; printf '%s\n' "$VERSION_CODENAME";)
-      if [[ $BUILD_IMAGES == 'trusty' ]]; then
-        download_language_mapping
-        pull_trusty_build_images
-      elif [[ $BUILD_IMAGES == 'xenial' ]]; then
-        pull_xenial_build_images
-      elif [[ $BUILD_IMAGES == 'bionic' ]]; then
-        pull_build_images  travisci/ci-ubuntu-1804:packer-1692713071-f03fa67b
-      elif [[ $BUILD_IMAGES == 'focal' ]]; then
-        pull_build_images  travisci/ci-ubuntu-2004:packer-1692701507-9586aaca
-      else
-        echo "Could not determine the Ubuntu release codename. Are you using Ubuntu OS?"
-      fi
+      download_language_mapping
+      pull_trusty_build_images
     fi
   else
     echo "Skip populating build images"
@@ -469,7 +427,7 @@ else
   configure_travis_worker_service
   install_language_mapping_from_airgap
   install_docker_images_from_airgap
-  setup_build_images_pull
+  pull_trusty_build_images
   configure_travis_worker
 fi
 
