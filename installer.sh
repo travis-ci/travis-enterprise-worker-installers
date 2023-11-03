@@ -178,9 +178,21 @@ install_docker() {
 }
 
 setup_docker() {
-  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
-  systemctl restart docker
-  sleep 5 # a short pause to ensure the docker daemon starts
+  if [ ! -d "/etc/docker" ] && [ ! -f "/etc/docker/daemon.json" ]; then
+    mkdir /etc/docker && touch /etc/docker/daemon.json
+    jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
+    systemctl restart docker
+    sleep 5 # a short pause to ensure the docker daemon starts
+  elif [ ! -f "/etc/docker/daemon.json" ]; then
+    touch /etc/docker/daemon.json
+    jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
+    systemctl restart docker
+    sleep 5 # a short pause to ensure the docker daemon starts
+  else
+    jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
+    systemctl restart docker
+    sleep 5 # a short pause to ensure the docker daemon starts
+  fi
 }
 
 create_aux_tools_dir() {
