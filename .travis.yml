@@ -4,7 +4,7 @@ addons:
     packages:
     - shellcheck
 script:
-  - shellcheck -s bash *.sh
+  - shellcheck -s bash -x *.sh # -x as manpage says "Follow  `source'  statements  even when the file is not specified as input."
   - shellcheck -s bash lxd/*.sh
 notifications:
   email: never
