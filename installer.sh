@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 ## Some environment setup
 set -e
@@ -18,8 +19,6 @@ DEFAULT_XENIAL_SARDONYX_IMAGE=ci-sardonyx:packer-1596621687-01d077a4
 DEFAULT_BUILD_IMAGES=focal
 
 UPDATE=false
-
-LATEST_IMAGE_FOCAL=$(curl -s "https://hub.docker.com/v2/namespaces/travisci/repositories/ci-ubuntu-2004/tags?page_size=1" | grep -o '"name": *"[^"]*' | grep -o '[^"]*$')
 
 ## Handle Arguments
 
@@ -164,19 +163,19 @@ get_latest_image() {
 get_default_image() {
   case "$1" in
     ci-ubuntu-1804*)
-      echo $DEFAULT_BIONIC_IMAGE
+      echo "$DEFAULT_BIONIC_IMAGE"
       ;;
     ci-ubuntu-2004*)
-      echo $DEFAULT_FOCAL_IMAGE
+      echo "$DEFAULT_FOCAL_IMAGE"
       ;;
     ci-ubuntu-2204*)
-      echo $DEFAULT_JAMMY_IMAGE
+      echo "$DEFAULT_JAMMY_IMAGE"
       ;;
     ci-opal*)
-      echo $DEFAULT_XENIAL_OPAL_IMAGE
+      echo "$DEFAULT_XENIAL_OPAL_IMAGE"
       ;;
     ci-sardonyx*)
-      echo $DEFAULT_XENIAL_SARDONYX_IMAGE
+      echo "$DEFAULT_XENIAL_SARDONYX_IMAGE"
       ;;
   esac
 }
@@ -184,11 +183,12 @@ get_default_image() {
 
 get_image() {
   repo=$1
-  local image=`get_latest_image "$repo"`
+  local image
+  image=$(get_latest_image "$repo")
   if [[ -z $image ]]; then
-    image=`get_default_image "$repo"`
+    image=$(get_default_image "$repo")
   fi
-  echo $image
+  echo "$image"
 }
 
 require_minimum_disk_space() {
@@ -225,6 +225,7 @@ install_docker() {
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     chmod a+r /etc/apt/keyrings/docker.asc
+    # shellcheck source=/dev/null
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
@@ -361,21 +362,21 @@ pull_trusty_build_images() {
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 (xenial) build images"
 
-  opal=`get_image 'ci-opal'`
-  sardonyx=`get_image 'ci-sardonyx'`
+  opal=$(get_image 'ci-opal')
+  sardonyx=$(get_image 'ci-sardonyx')
 
-  docker pull $opal
-  docker pull $sardonyx
+  docker pull "$opal"
+  docker pull "$sardonyx"
 
   declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
   declare -a other_language_mappings=('haskell' 'erlang' 'perl')
 
   for lang_map in "${most_common_language_mappings[@]}"; do
-    docker tag $sardonyx travis:"$lang_map"
+    docker tag "$sardonyx" travis:"$lang_map"
   done
 
   for lang_map in "${other_language_mappings[@]}"; do
-    docker tag $opal travis:"$lang_map"
+    docker tag "$opal" travis:"$lang_map"
   done
 
   declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
@@ -451,14 +452,14 @@ configure_travis_worker() {
 
 setup_images() {
   repo=$1
-  image=`get_image "$repo"`
-  pull_build_images travisci/$repo:$image
+  image=$(get_image "$repo")
+  pull_build_images travisci/"$repo":"$image"
 }
 
 drop_images() {
   repo=$1
-  for i in $(docker images | grep $repo | tr -s ' ' | cut -f 3 -d' '); do
-    docker rmi -f $i
+  for i in $(docker images | grep "$repo" | tr -s ' ' | cut -f 3 -d' '); do
+    docker rmi -f "$i"
   done
 }
 
