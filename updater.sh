@@ -2,7 +2,7 @@
 
 echo "Installing Ubuntu 18.04 (bionic) build images"
 
-ubuntu1804=travisci/ci-ubuntu-1804:packer-1643096380-31a09d16
+ubuntu1804=travisci/ci-ubuntu-2004:packer-1725882603-4e45eefd
 
 docker pull $ubuntu1804
 
