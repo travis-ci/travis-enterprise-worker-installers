@@ -240,7 +240,7 @@ install_docker() {
 }
 
 setup_docker() {
-  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
+  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver "$DOCKER_STORAGE_DRIVER" > /etc/docker/daemon.json
   systemctl restart docker
   sleep 2 # a short pause to ensure the docker daemon starts
 }
@@ -314,7 +314,7 @@ configure_travis_worker_service() {
 
 # Pulls down the travis-worker image
 install_travis_worker() {
-  docker pull travisci/worker:$TRAVIS_WORKER_VERSION
+  docker pull travisci/worker:"$TRAVIS_WORKER_VERSION"
 }
 
 download_language_mapping() {
