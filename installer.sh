@@ -13,8 +13,8 @@ DEFAULT_BIONIC_IMAGE=ci-ubuntu-1804:packer-1692713071-f03fa67b
 DEFAULT_FOCAL_IMAGE=ci-ubuntu-2004:packer-1692701507-9586aaca
 DEFAULT_JAMMY_IMAGE=''
 
-DEFAULT_XENIAL_OPAL_IMAGE=ci-opal:packer-1596627727-fb48a890
-DEFAULT_XENIAL_SARDONYX_IMAGE=ci-sardonyx:packer-1596621687-01d077a4
+DEFAULT_XENIAL_OPAL_IMAGE=ci-opal:packer-1673354396-67939b42
+DEFAULT_XENIAL_SARDONYX_IMAGE=packer-1732696791-7dd427e6
 
 DEFAULT_BUILD_IMAGES=focal
 
@@ -240,7 +240,7 @@ install_docker() {
 }
 
 setup_docker() {
-  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver $DOCKER_STORAGE_DRIVER > /etc/docker/daemon.json
+  jq -n '{"storage-driver": $driver, "icc": false, "log-driver": "journald"}' --arg driver "$DOCKER_STORAGE_DRIVER" > /etc/docker/daemon.json
   systemctl restart docker
   sleep 2 # a short pause to ensure the docker daemon starts
 }
@@ -314,7 +314,7 @@ configure_travis_worker_service() {
 
 # Pulls down the travis-worker image
 install_travis_worker() {
-  docker pull travisci/worker:$TRAVIS_WORKER_VERSION
+  docker pull travisci/worker:"$TRAVIS_WORKER_VERSION"
 }
 
 download_language_mapping() {
@@ -362,32 +362,38 @@ pull_trusty_build_images() {
 pull_xenial_build_images() {
   echo "Installing Ubuntu 16.04 (xenial) build images"
 
-  opal=$(get_image 'ci-opal')
-  sardonyx=$(get_image 'ci-sardonyx')
+  # Get tags (from API or fallback defaults)
+  opal_tag=$(get_image 'ci-opal')
+  sardonyx_tag=$(get_image 'ci-sardonyx')
 
-  docker pull "$opal"
-  docker pull "$sardonyx"
+  # Normalize to tags (strip any repo prefixes just in case)
+  opal_tag=${opal_tag#ci-opal:}
+  sardonyx_tag=${sardonyx_tag#ci-sardonyx:}
 
-  declare -a most_common_language_mappings=('default' 'go' 'jvm' 'node_js' 'php' 'python' 'ruby')
-  declare -a other_language_mappings=('haskell' 'erlang' 'perl')
+  # Build correct full image refs
+  opal_image="travisci/ci-opal:${opal_tag}"
+  sardonyx_image="travisci/ci-sardonyx:${sardonyx_tag}"
 
-  for lang_map in "${most_common_language_mappings[@]}"; do
-    docker tag "$sardonyx" travis:"$lang_map"
+  # Pull correct images
+  docker pull "$opal_image"
+  docker pull "$sardonyx_image"
+
+  # Map stacks the way Travis worker expects
+  for lang in default go jvm node_js php python ruby; do
+    docker tag "$sardonyx_image" "travis:${lang}"
+  done
+  for lang in haskell erlang perl; do
+    docker tag "$opal_image" "travis:${lang}"
   done
 
-  for lang_map in "${other_language_mappings[@]}"; do
-    docker tag "$opal" travis:"$lang_map"
-  done
-
-  declare -a lang_mappings=('clojure:jvm' 'scala:jvm' 'groovy:jvm' 'java:jvm' 'elixir:erlang' 'node-js:node_js')
-
-  for lang_map in "${lang_mappings[@]}"; do
-    map=$(echo "$lang_map"|cut -d':' -f 1)
-    lang=$(echo "$lang_map"|cut -d':' -f 2)
-
-    docker tag travis:"$lang" travis:"$map"
+  # Compatibility aliases
+  for pair in clojure:jvm scala:jvm groovy:jvm java:jvm elixir:erlang node-js:node_js; do
+    to=${pair%%:*}
+    from=${pair##*:}
+    docker tag "travis:${from}" "travis:${to}"
   done
 }
+
 
 pull_build_images() {
   ubuntu_images=$1
