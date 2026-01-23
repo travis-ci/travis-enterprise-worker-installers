@@ -134,14 +134,18 @@ fi
 
 # consts
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_URL=https://travis-lxc-images.s3.us-east-2.amazonaws.com
-declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1603734892-1fb6ced8.tar.gz"
-                                                  ["amd64-bionic"]="travis-ci-ubuntu-1804-1603455600-7957c7a9.tar.gz"
-                                                  ["s390x-focal"]="ubuntu-20.04-full-1591083354.tar.gz"
-                                                  ["s390x-bionic"]="ubuntu-18.04-full-1591342433.tar.gz"
-                                                  ["arm64-focal"]="ubuntu-20.04-full-1604305461.tar.gz"
-                                                  ["arm64-bionic"]="ubuntu-18.04-full-1604302660.tar.gz"
-                                                  ["ppc64le-focal"]="ubuntu-20.04-full-1619708185.tar.gz"
-                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1617839338.tar.gz")
+declare -A TRAVIS_LXD_INSTALL_SCRIPT_IMAGES_MAP=(["amd64-focal"]="travis-ci-ubuntu-2004-1726220016-655c8cb5.tar.gz"
+                                                  ["amd64-bionic"]="travis-ci-ubuntu-1804-1726232318-655c8cb5.tar.gz"
+                                                  ["amd64-jammy"]="ravis-ci-ubuntu-2204-1726232313-c1c46c8c.tar.gz"
+                                                  ["s390x-focal"]="ubuntu-20.04-full-1724381580.tar.gz"
+                                                  ["s390x-bionic"]="ubuntu-18.04-full-1724432060.tar.gz"
+                                                  ["s390x-jammy"]="ubuntu-22.04-full-1728864263.tar.gz"
+                                                  ["arm64-focal"]="ubuntu-20.04-full-1728657989.tar.gz"
+                                                  ["arm64-bionic"]="ubuntu-18.04-full-1728657997.tar.gz"
+                                                  ["arm64-jammy"]="ubuntu-22.04-full-1728876643.tar.gz"
+                                                  ["ppc64le-focal"]="ubuntu-20.04-full-1724382820.tar.gz"
+                                                  ["ppc64le-jammy"]="ubuntu-22.04-full-1728864264.tar.gz"
+                                                  ["ppc64le-bionic"]="ubuntu-18.04-full-1724432061.tar.gz")
 
 # variables
 TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR="${TRAVIS_LXD_INSTALL_SCRIPT_IMAGE_DIR:-.}"
